@@ -9,7 +9,7 @@ env = ProductionPlantEnvironment()
 
 state = env.reset()
 
-num_max_steps = 200
+num_max_steps = 500
 
 for step in range(num_max_steps):
     with open('output/output.txt', 'a') as file:

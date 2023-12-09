@@ -11,7 +11,7 @@ class ProductionPlantEnvironment():
         self.n_products = 4
         self.n_production_skills = 4
         self.action_space = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        self.action_time =  [10, 10, 10, 10, 5, 5, 5, 5, 0, 0, 5]
+        self.action_time =  [5, 5, 5, 5, 2, 2, 2, 2, 0, 0, 2]
         self.action_mask = {}
 
         # initially mask all actions for all agents
@@ -152,9 +152,10 @@ class ProductionPlantEnvironment():
 
         self.update_trasnfer_mask()
         
-        # increase time for every action (for now for every turn)
-        self.time += 1
-
+        # CHECK IF IT WORKS
+        # increase time for every action in which we don't have an empty agent doing nothing
+        if (not (action == 9 and self.agents_busy[self.current_agent][0] == 0)):
+            self.time += 1
         return action_result
 
     def step(self, action):
