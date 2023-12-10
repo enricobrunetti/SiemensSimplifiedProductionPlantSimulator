@@ -10,8 +10,8 @@ class ProductionPlantEnvironment():
         self.n_agents = 5
         self.n_products = 4
         self.n_production_skills = 4
-        self.action_space = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        self.action_time =  [5, 5, 5, 5, 2, 2, 2, 2, 0, 0, 2]
+        self.action_space = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        self.action_time =  [5, 5, 5, 5, 2, 2, 2, 2, 0, 0]
         self.action_mask = {}
 
         # initially mask all actions for all agents
@@ -27,8 +27,6 @@ class ProductionPlantEnvironment():
         self.agents_skills = {0: [0], 1: [1, 3], 2: [2, 3], 3: [1, 3], 4: [2, 3]}
 
         self.supply_agent = 0
-
-        self.reward_range = (-200, 200)
 
         self.current_episode = 0
         self.success_episode = []
@@ -48,7 +46,7 @@ class ProductionPlantEnvironment():
         self.current_step = 0
         self.max_step = 100
 
-        self.action_mask[self.current_agent] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+        self.action_mask[self.current_agent] = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
         #agents state
         self.agents_state = np.array([[0, 0, 0, 0],
@@ -71,11 +69,27 @@ class ProductionPlantEnvironment():
     def _take_action(self, action):
         # TO-DO: try to accorpate production skills and transfer actions
         # perform production skills
+        # # agent with supply skill take a new product and perform supply action
         if action == 0:
-            self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
+            # if there are no more porducts to start the production on
+            # then doesn't allow anymore that action
+            waiting_products = list(self.waiting_products)
+            if not waiting_products:
+                self.action_mask[self.supply_agent] = np.zeros(len(self.action_space))
+                action_result = 0
+            else :
+                next_product = random.choice(waiting_products)
+                waiting_products.remove(next_product)
+                self.waiting_products = np.array(waiting_products)
+                self.agents_state[self.supply_agent][next_product] = 1
+                self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
+                action_result = 10
+                self.action_mask[self.supply_agent] = self.compute_mask(self.supply_agent, next_product)
+                self.agents_busy[self.supply_agent] = (1, self.time + self.action_time[action])
+            '''self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
             action_result = 10
             self.action_mask[self.current_agent] = self.compute_mask(self.current_agent, np.argmax(self.agents_state[self.current_agent] == 1))
-            self.agents_busy[self.current_agent] = (1, self.time + self.action_time[action])
+            self.agents_busy[self.current_agent] = (1, self.time + self.action_time[action])'''
         elif action == 1:
             self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
             action_result = 10
@@ -126,29 +140,13 @@ class ProductionPlantEnvironment():
             self.agents_busy[next_agent] = (1, self.time + self.action_time[action])
         elif action == 8:
             action_result = 0
-        # agent with supply skill take a new product
-        elif action == 10:
-            # if there are no more porducts to start the production on
-            # then doesn't allow anymore that action
-            waiting_products = list(self.waiting_products)
-            if not waiting_products:
-                self.action_mask[self.supply_agent] = np.zeros(len(self.action_space))
-                action_result = 0
-            else :
-                next_product = random.choice(waiting_products)
-                waiting_products.remove(next_product)
-                self.waiting_products = np.array(waiting_products)
-                self.agents_state[self.supply_agent][next_product] = 1
-                action_result = 10
-                self.action_mask[self.supply_agent] = self.compute_mask(self.supply_agent, next_product)
-                self.agents_busy[self.supply_agent] = (1, self.time + self.action_time[action])
         # all the actions have been masked -> no action available (agent standby)
         else:
             action_result = 0
 
         # if we have transfered from supply agent then allow it to get a new product
         if action >= 4 and action <= 7 and self.current_agent == self.supply_agent:
-            self.action_mask[self.current_agent][-1] = 1
+            self.action_mask[self.current_agent][0] = 1
 
         self.update_trasnfer_mask()
         
@@ -189,7 +187,7 @@ class ProductionPlantEnvironment():
 
         return obs, reward, done, {}
     
-    # TO-DO: see if it makes senso to add also another print on the console
+    # TO-DO: see if it makes sens to add also another print on the console
     def render_episode(self):
         pass
 
@@ -204,13 +202,13 @@ class ProductionPlantEnvironment():
             else:
                 mask = np.append(mask, np.zeros(5))
             # don't allow do nothing
-            mask = np.append(mask, [0, 0])
+            mask = np.append(mask, 0)
         # if the agent has no product mask all actions as zeroes unless it is the supply agent 
         # (in that case mask the take a new element action as 1)
         else:
             mask = np.zeros(len(self.action_space))
             if agent == self.supply_agent:
-                mask[-1] = 1
+                mask[0] = 1
         return mask
 
     # return an array containing 4 elements, one corresponding to the next skill
@@ -236,13 +234,22 @@ class ProductionPlantEnvironment():
             mask = np.append(mask, elem)
         return mask
     
+    # TO-DO: do that only when there is a transfer in order to speed up (you need to do that for everyone is connected
+    # to the destination of the transport except for the destination of the transport)
     # update the action mask for transfer actions in order to avoid sending a product to
     # an agent that already has another product
     def update_trasnfer_mask(self):
         for agent in self.agents_connections:
-            for i in range(4, 7):
-                if self.agents_connections[agent][i - 4] != None and not all(elem == 0 for elem in self.agents_state[self.agents_connections[agent][i - 4]]) and agent in self.action_mask:
-                    self.action_mask[agent][i] = 0
+            if self.hasProduct(agent):
+                for i in range(4, 8):
+                    if self.agents_connections[agent][i-4] != None and self.hasProduct(self.agents_connections[agent][i - 4]):
+                        self.action_mask[agent][i] = 0
+                    elif self.agents_connections[agent][i-4] != None and (not self.hasProduct(self.agents_connections[agent][i - 4]) and np.all(self.action_mask[agent][:self.n_production_skills] == 0)):
+                        self.action_mask[agent][i] = 1
+
+    # utility function for update_transfer_mask
+    def hasProduct(self, agent):
+        return not np.all(self.agents_state[agent] == 0)
 
 
     
