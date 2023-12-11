@@ -29,7 +29,7 @@ class ProductionPlantEnvironment():
         self.supply_agent = 0
 
         self.current_episode = 0
-        self.success_episode = []
+        self.episodes_status = {}
 
     def reset(self):
         self.current_agent = 0
@@ -63,8 +63,7 @@ class ProductionPlantEnvironment():
         return self._next_observation()
     
     def _next_observation(self):
-        obs = {'current_agent': self.current_agent, 'time': self.time, 'agents_state': self.agents_state, 'products_state': self.products_state, 'action_mask': self.action_mask, 'agents_busy': self.agents_busy}
-        return obs
+        return {'current_agent': self.current_agent, 'time': self.time, 'agents_state': self.agents_state, 'products_state': self.products_state, 'action_mask': self.action_mask, 'agents_busy': self.agents_busy}
 
     def _take_action(self, action):
         # TO-DO: try to accorpate production skills and transfer actions
@@ -76,33 +75,24 @@ class ProductionPlantEnvironment():
             waiting_products = list(self.waiting_products)
             if not waiting_products:
                 self.action_mask[self.supply_agent] = np.zeros(len(self.action_space))
-                action_result = 0
             else :
                 next_product = random.choice(waiting_products)
                 waiting_products.remove(next_product)
                 self.waiting_products = np.array(waiting_products)
                 self.agents_state[self.supply_agent][next_product] = 1
                 self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
-                action_result = 10
                 self.action_mask[self.supply_agent] = self.compute_mask(self.supply_agent, next_product)
                 self.agents_busy[self.supply_agent] = (1, self.time + self.action_time[action])
-            '''self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
-            action_result = 10
-            self.action_mask[self.current_agent] = self.compute_mask(self.current_agent, np.argmax(self.agents_state[self.current_agent] == 1))
-            self.agents_busy[self.current_agent] = (1, self.time + self.action_time[action])'''
         elif action == 1:
             self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
-            action_result = 10
             self.action_mask[self.current_agent] = self.compute_mask(self.current_agent, np.argmax(self.agents_state[self.current_agent] == 1))
             self.agents_busy[self.current_agent] = (1, self.time + self.action_time[action])
         elif action == 2:
             self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
-            action_result = 10
             self.action_mask[self.current_agent] = self.compute_mask(self.current_agent, np.argmax(self.agents_state[self.current_agent] == 1))
             self.agents_busy[self.current_agent] = (1, self.time + self.action_time[action])
         elif action == 3:
             self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
-            action_result = 10
             self.action_mask[self.current_agent] = self.compute_mask(self.current_agent, np.argmax(self.agents_state[self.current_agent] == 1))
             self.agents_busy[self.current_agent] = (1, self.time + self.action_time[action])
         # perform transfer actions
@@ -110,7 +100,6 @@ class ProductionPlantEnvironment():
             next_agent = self.agents_connections[self.current_agent][0]
             self.agents_state[next_agent] = self.agents_state[self.current_agent]
             self.agents_state[self.current_agent] = np.zeros_like(self.agents_state[self.current_agent])
-            action_result = 5
             self.action_mask[self.current_agent] = np.zeros_like(self.action_mask[self.current_agent])
             self.action_mask[next_agent] = self.compute_mask(next_agent, np.argmax(self.agents_state[next_agent] == 1))
             self.agents_busy[next_agent] = (1, self.time + self.action_time[action])
@@ -118,7 +107,6 @@ class ProductionPlantEnvironment():
             next_agent = self.agents_connections[self.current_agent][1]
             self.agents_state[next_agent] = self.agents_state[self.current_agent]
             self.agents_state[self.current_agent] = np.zeros_like(self.agents_state[self.current_agent])
-            action_result = 5
             self.action_mask[self.current_agent] = np.zeros_like(self.action_mask[self.current_agent])
             self.action_mask[next_agent] = self.compute_mask(next_agent, np.argmax(self.agents_state[next_agent] == 1))
             self.agents_busy[next_agent] = (1, self.time + self.action_time[action])
@@ -126,7 +114,6 @@ class ProductionPlantEnvironment():
             next_agent = self.agents_connections[self.current_agent][2]
             self.agents_state[next_agent] = self.agents_state[self.current_agent]
             self.agents_state[self.current_agent] = np.zeros_like(self.agents_state[self.current_agent])
-            action_result = 5
             self.action_mask[self.current_agent] = np.zeros_like(self.action_mask[self.current_agent])
             self.action_mask[next_agent] = self.compute_mask(next_agent, np.argmax(self.agents_state[next_agent] == 1))
             self.agents_busy[next_agent] = (1, self.time + self.action_time[action])
@@ -134,15 +121,14 @@ class ProductionPlantEnvironment():
             next_agent = self.agents_connections[self.current_agent][3]
             self.agents_state[next_agent] = self.agents_state[self.current_agent]
             self.agents_state[self.current_agent] = np.zeros_like(self.agents_state[self.current_agent])
-            action_result = 5
             self.action_mask[self.current_agent] = np.zeros_like(self.action_mask[self.current_agent])
             self.action_mask[next_agent] = self.compute_mask(next_agent, np.argmax(self.agents_state[next_agent] == 1))
             self.agents_busy[next_agent] = (1, self.time + self.action_time[action])
         elif action == 8:
-            action_result = 0
+            pass
         # all the actions have been masked -> no action available (agent standby)
         else:
-            action_result = 0
+            pass
 
         # if we have transfered from supply agent then allow it to get a new product
         if action >= 4 and action <= 7 and self.current_agent == self.supply_agent:
@@ -153,7 +139,9 @@ class ProductionPlantEnvironment():
         # increase time for every action in which we don't have an empty agent doing nothing
         if (not (action == 9 and self.agents_busy[self.current_agent][0] == 0)):
             self.time += 1
-        return action_result
+
+        # return as reward the execution time of the action
+        return self.action_time[action]
 
     def step(self, action):
         reward = self._take_action(action)
@@ -166,6 +154,8 @@ class ProductionPlantEnvironment():
                 # if the production of a product is terminated remove it from agents_state and update the action mask
                 # of the agent that termined the product
                 if np.max(self.agents_state[agent]) == 1 and all(elem == 0 for elem in self.products_state[np.argmax(self.agents_state[agent])]):
+                    # TO-DO: find a cleaner way to produce this log
+                    print(f"Episode {np.argmax(self.agents_state[agent])} finished.")
                     self.agents_state[agent] = np.zeros_like(self.agents_state[agent])
                     self.action_mask[agent] = self.compute_mask(agent)
 

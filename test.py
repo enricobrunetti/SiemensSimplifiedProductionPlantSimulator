@@ -34,5 +34,5 @@ for step in range(num_max_steps):
         file.write(f"Step: {step}, Action: {action}, Reward: {reward}, Done: {done}\n\n")
 
     if done:
-        print("The episode is finished.")
+        print("The run is finished.")
         break
