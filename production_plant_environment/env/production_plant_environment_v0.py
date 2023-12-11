@@ -146,11 +146,10 @@ class ProductionPlantEnvironment():
 
         # if we have transfered from supply agent then allow it to get a new product
         if action >= 4 and action <= 7 and self.current_agent == self.supply_agent:
-            self.action_mask[self.current_agent][0] = 1
+            self.action_mask[self.current_agent] = self.compute_mask(self.current_agent)
 
         self.update_trasnfer_mask()
         
-        # CHECK IF IT WORKS
         # increase time for every action in which we don't have an empty agent doing nothing
         if (not (action == 9 and self.agents_busy[self.current_agent][0] == 0)):
             self.time += 1
@@ -207,7 +206,7 @@ class ProductionPlantEnvironment():
         # (in that case mask the take a new element action as 1)
         else:
             mask = np.zeros(len(self.action_space))
-            if agent == self.supply_agent:
+            if agent == self.supply_agent and self.waiting_products.size > 0:
                 mask[0] = 1
         return mask
 
