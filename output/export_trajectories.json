@@ -1,0 +1,184 @@
+{
+      "Episode 0": [
+            {
+                  "time": 33,
+                  "agent": 0,
+                  "action": 0,
+                  "reward": 5
+            },
+            {
+                  "time": 39,
+                  "agent": 0,
+                  "action": 6,
+                  "reward": 2
+            },
+            {
+                  "time": 41,
+                  "agent": 2,
+                  "action": 7,
+                  "reward": 2
+            },
+            {
+                  "time": 43,
+                  "agent": 0,
+                  "action": 6,
+                  "reward": 2
+            },
+            {
+                  "time": 45,
+                  "agent": 2,
+                  "action": 8,
+                  "reward": 0
+            },
+            {
+                  "time": 46,
+                  "agent": 2,
+                  "action": 8,
+                  "reward": 0
+            },
+            {
+                  "time": 47,
+                  "agent": 2,
+                  "action": 4,
+                  "reward": 2
+            },
+            {
+                  "time": 49,
+                  "agent": 1,
+                  "action": 1,
+                  "reward": 5
+            },
+            {
+                  "time": 54,
+                  "agent": 1,
+                  "action": 8,
+                  "reward": 0
+            },
+            {
+                  "time": 55,
+                  "agent": 1,
+                  "action": 6,
+                  "reward": 2
+            },
+            {
+                  "time": 57,
+                  "agent": 2,
+                  "action": 2,
+                  "reward": 5
+            },
+            {
+                  "time": 62,
+                  "agent": 2,
+                  "action": 3,
+                  "reward": 5
+            }
+      ],
+      "Episode 1": [
+            {
+                  "time": 7,
+                  "agent": 0,
+                  "action": 0,
+                  "reward": 5
+            },
+            {
+                  "time": 13,
+                  "agent": 0,
+                  "action": 8,
+                  "reward": 0
+            },
+            {
+                  "time": 15,
+                  "agent": 0,
+                  "action": 5,
+                  "reward": 2
+            },
+            {
+                  "time": 20,
+                  "agent": 1,
+                  "action": 5,
+                  "reward": 2
+            },
+            {
+                  "time": 22,
+                  "agent": 4,
+                  "action": 2,
+                  "reward": 5
+            },
+            {
+                  "time": 28,
+                  "agent": 4,
+                  "action": 3,
+                  "reward": 5
+            }
+      ],
+      "Episode 2": [
+            {
+                  "time": 0,
+                  "agent": 0,
+                  "action": 0,
+                  "reward": 5
+            },
+            {
+                  "time": 5,
+                  "agent": 0,
+                  "action": 6,
+                  "reward": 2
+            },
+            {
+                  "time": 8,
+                  "agent": 2,
+                  "action": 2,
+                  "reward": 5
+            },
+            {
+                  "time": 14,
+                  "agent": 2,
+                  "action": 8,
+                  "reward": 0
+            },
+            {
+                  "time": 17,
+                  "agent": 2,
+                  "action": 5,
+                  "reward": 2
+            },
+            {
+                  "time": 21,
+                  "agent": 3,
+                  "action": 1,
+                  "reward": 5
+            },
+            {
+                  "time": 27,
+                  "agent": 3,
+                  "action": 3,
+                  "reward": 5
+            }
+      ],
+      "Episode 3": [
+            {
+                  "time": 19,
+                  "agent": 0,
+                  "action": 0,
+                  "reward": 5
+            },
+            {
+                  "time": 26,
+                  "agent": 0,
+                  "action": 8,
+                  "reward": 0
+            },
+            {
+                  "time": 29,
+                  "agent": 0,
+                  "action": 6,
+                  "reward": 2
+            },
+            {
+                  "time": 34,
+                  "agent": 2,
+                  "action": 3,
+                  "reward": 5
+            }
+      ]
+}

@@ -1,6 +1,6 @@
 import numpy as np
 import random
                   
-test = np.array([])
-
-print(test.size)
+n_products = 4
+trajectories = {episode: [] for episode in range(n_products)}
+print(trajectories)

@@ -1,13 +1,22 @@
-import gymnasium
+import json
 import numpy as np
+import copy
 from production_plant_environment.env.production_plant_environment_v0 import ProductionPlantEnvironment
 
 with open('output/output.txt', 'w') as file:
     file.write('')
 
+n_products = 4
+
+# create trajectory
+trajectories = {f'Episode {episode}': [] for episode in range(n_products)}
+with open('output/export_trajectories.json', 'w') as outfile:
+    json.dump(trajectories, outfile, indent=6)
+
 env = ProductionPlantEnvironment()
 
 state = env.reset()
+old_state = copy.deepcopy(state)
 
 num_max_steps = 500
 
@@ -32,6 +41,23 @@ for step in range(num_max_steps):
 
     with open('output/output.txt', 'a') as file:
         file.write(f"Step: {step}, Action: {action}, Reward: {reward}, Done: {done}\n\n")
+
+    # update trajectory
+    if action != 9:
+        with open('output/export_trajectories.json', 'r') as infile:
+            trajectories = json.load(infile)
+        
+        state_to_save = copy.deepcopy(old_state)
+        del state_to_save['time'], state_to_save['current_agent'], state_to_save['agents_busy']
+        # TO-DO: find a way to parse to JSON also nparrays and add them to the trajectory
+        trajectory_update = {'time': int(old_state['time']), 'agent': int(old_state['current_agent']), 'action': int(action), 'reward': int(reward)}
+        current_product = np.argmax(state['agents_state'][old_state['current_agent']]) if action == 0 else np.argmax(old_state['agents_state'][old_state['current_agent']])
+        trajectories[f"Episode {current_product}"].append(trajectory_update)
+        
+        with open('output/export_trajectories.json', 'w') as outfile:
+            json.dump(trajectories, outfile, indent=6)
+    
+    old_state = copy.deepcopy(state)
 
     if done:
         print("The run is finished.")
