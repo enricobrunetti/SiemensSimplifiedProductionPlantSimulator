@@ -55,10 +55,10 @@ class ProductionPlantEnvironment():
                                      [0, 0, 0, 0],
                                      [0, 0, 0, 0]])
         
-        self.products_state = np.array([[1, 2, 3, 4],
-                                        [1, 0, 2, 3],
-                                        [1, 3, 2, 4],
-                                        [1, 0, 0, 2]])
+        self.products_state = np.array([[[1, 0, 0], [2, 0, 0], [3, 5, 0], [4, 6, 0]],
+                                        [[1, 0, 0], [4, 7, 0], [2, 5, 0], [3, 6, 8]],
+                                        [[1, 0, 0], [3, 0, 0], [2, 0, 0], [4, 0, 0]],
+                                        [[1, 0, 0], [0, 0, 0], [0, 0, 0], [2, 0, 0]]])
         
         return self._next_observation()
     
@@ -153,7 +153,7 @@ class ProductionPlantEnvironment():
                 self.agents_busy[agent] = (0, 0)
                 # if the production of a product is terminated remove it from agents_state and update the action mask
                 # of the agent that termined the product
-                if np.max(self.agents_state[agent]) == 1 and all(elem == 0 for elem in self.products_state[np.argmax(self.agents_state[agent])]):
+                if np.max(self.agents_state[agent]) == 1 and all(elem == 0 for elem in np.array(self.products_state[np.argmax(self.agents_state[agent])]).flatten()):
                     # TO-DO: find a cleaner way to produce this log
                     print(f"Episode {np.argmax(self.agents_state[agent])} finished.")
                     self.agents_state[agent] = np.zeros_like(self.agents_state[agent])
@@ -205,7 +205,9 @@ class ProductionPlantEnvironment():
     # to the skills that aren't the next one or can't be performed
     def compute_production_skill_masking(self, agent, product):
         mask = np.zeros(self.n_production_skills)
-        skill = np.argmax(self.products_state[product] == 1)
+        #skill = np.argmax(self.products_state[product] == 1)
+        skills = [i for i in range(len(self.products_state[product])) if 1 in self.products_state[product][i]]
+        skill = skills[0] if len(skills) > 0 else 0
         if skill in self.agents_skills[agent]:
             mask[skill] = 1
         return mask
