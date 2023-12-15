@@ -51,7 +51,7 @@ for step in range(num_max_steps):
         del state_to_save['time'], state_to_save['current_agent'], state_to_save['agents_busy']
         state_to_save['action_mask'] = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in state_to_save['action_mask'].items()}
         state_to_save = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in state_to_save.items()}
-        trajectory_update = {'time': int(old_state['time']), 'agent': int(old_state['current_agent']),' state': state_to_save, 'action': int(action), 'reward': int(reward)}
+        trajectory_update = {'time': int(old_state['time']), 'agent': int(old_state['current_agent']), 'state': state_to_save ,'action': int(action), 'reward': int(reward)}
         current_product = np.argmax(state['agents_state'][old_state['current_agent']]) if action == 0 else np.argmax(old_state['agents_state'][old_state['current_agent']])
         trajectories[f"Episode {current_product}"].append(trajectory_update)
         
