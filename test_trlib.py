@@ -1,9 +1,13 @@
 import json
 import numpy as np
 from production_plant_environment.env.production_plant_environment_v0 import ProductionPlantEnvironment
-from trlib.utilities.interaction import split_data
+from utils.trajectories_management import extract_agent_trajectories, set_agents_state_observability
 
-with open('output/test.json', 'r') as json_file:
+#extract_agent_trajectories("prova", 5, 4)
+
+set_agents_state_observability("prova", 5, 4, 1)
+
+'''with open('output/test.json', 'r') as json_file:
     data = json.load(json_file)
 
 mdp = ProductionPlantEnvironment()
@@ -16,4 +20,4 @@ print(matrice)
 
 
 _, _, _, r, s_prime, absorbing, sa = split_data(matrice, 3, 1)
-print(data)
+print(data)'''
