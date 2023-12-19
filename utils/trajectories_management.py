@@ -66,6 +66,53 @@ def compute_agents_state_mask(n_agents, n_products, observability_grade):
         agents_state_mask[agent] = np.array(new_state)
     
     return agents_state_mask
+
+# TO-DO: include the usage of INPUT_DIR
+def split_data_single_agent(INPUT_DIR, agent):
+    with open('output/test.json', 'r') as infile:
+        trajectories = json.load(infile)
+    
+    trajectory = trajectories[f'Agent: {agent}']
+    t = []
+    s = []
+    a = []
+    r = []
+    s_prime = []
+    absorbing = []
+    sa = []
+    for episode in trajectory:
+        for observation in trajectory[episode]:
+            t.append(observation['time'])
+            s.append(flatten_dict_values(observation['state']))
+            a.append(observation['action'])
+            r.append(observation['reward'])
+            # TO-DO: fix absorbing
+            absorbing.append(0)
+            temp_sa = flatten_dict_values(observation['state'])
+            temp_sa.append(observation['action'])
+            sa.append(temp_sa)
+
+    # TO-DO: fix s_prime
+    s_prime = s[1:]
+    s_prime.append(s[-1])
+    print(s)
+    print(sa)
+    print(f'len of s: {len(s[0])}')
+    return np.array(t), np.array(s), np.array(a), np.array(r), np.array(s_prime), np.array(absorbing), np.array(sa)
+
+def flatten_dict_values(d):
+    flattened_values = []
+    if isinstance(d, dict):
+        for value in d.values():
+            flattened_values.extend(flatten_dict_values(value))
+    elif isinstance(d, list):
+        for item in d:
+            flattened_values.extend(flatten_dict_values(item))
+    else:
+        flattened_values.append(d)
+    return flattened_values
+
+
     
 
 
