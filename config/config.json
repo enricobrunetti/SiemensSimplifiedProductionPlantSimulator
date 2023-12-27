@@ -4,7 +4,7 @@
     "n_production_skills": 4,
     "actions": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
     "action_time": [5, 5, 5, 5, 2, 2, 2, 2, 0, 0],
-    "action_energy": null,
+    "action_energy": [3, 3, 3, 3, 1, 1, 1, 1, 0, 0],
     "alpha": 0.7,
     "beta": 0.3,
     "agents_connections": {"0": [null, 1, 2, null],

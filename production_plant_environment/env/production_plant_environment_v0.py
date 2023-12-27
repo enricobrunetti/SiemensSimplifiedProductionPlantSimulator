@@ -43,18 +43,9 @@ class ProductionPlantEnvironment():
         self.action_mask[self.current_agent] = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
         #agents state
-        '''self.agents_state = np.array([[0, 0, 0, 0],
-                                     [0, 0, 0, 0],
-                                     [0, 0, 0, 0],
-                                     [0, 0, 0, 0],
-                                     [0, 0, 0, 0]])'''
         self.agents_state = np.array(self.config['agents_starting_state'])
-        
-        '''self.products_state = np.array([[[1, 0, 0], [2, 0, 0], [3, 5, 0], [4, 6, 0]],
-                                        [[1, 0, 0], [4, 7, 0], [2, 5, 0], [3, 6, 8]],
-                                        [[1, 0, 0], [3, 0, 0], [2, 0, 0], [4, 0, 0]],
-                                        [[1, 0, 0], [0, 0, 0], [0, 0, 0], [2, 0, 0]]])'''
-        
+
+        #produts state
         self.products_state = np.array(self.config['products_starting_state'])
         
         return self._next_observation()
@@ -138,7 +129,7 @@ class ProductionPlantEnvironment():
             self.time += 1
 
         # return as reward the execution time of the action
-        return self.action_time[action]
+        return self.action_time[action] * self.alpha + self.action_energy[action] * self.beta
 
     def step(self, action):
         reward = self._take_action(action)
