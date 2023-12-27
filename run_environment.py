@@ -3,25 +3,30 @@ import numpy as np
 import copy
 from production_plant_environment.env.production_plant_environment_v0 import ProductionPlantEnvironment
 
-with open('output/output.txt', 'w') as file:
+CONFIG_PATH = "config/config.json"
+
+with open(CONFIG_PATH) as config_file:
+    config = json.load(config_file)
+
+with open('output/output2.txt', 'w') as file:
     file.write('')
 
-n_products = 4
+n_products = config['n_products']
 
 # create trajectory
 trajectories = {f'Episode {episode}': [] for episode in range(n_products)}
-with open('output/export_trajectories.json', 'w') as outfile:
+with open('output/export_trajectories2.json', 'w') as outfile:
     json.dump(trajectories, outfile, indent=6)
 
-env = ProductionPlantEnvironment()
+env = ProductionPlantEnvironment(config)
 
 state = env.reset()
 old_state = copy.deepcopy(state)
 
-num_max_steps = 500
+num_max_steps = config['num_max_steps']
 
 for step in range(num_max_steps):
-    with open('output/output.txt', 'a') as file:
+    with open('output/output2.txt', 'a') as file:
         file.write(f"***************Step{step}***************\n")
         file.write(f"Time: {state['time']}, Current agent: {state['current_agent']}\n")
         file.write(f"Agents busy: {state['agents_busy']}\n")
@@ -39,12 +44,12 @@ for step in range(num_max_steps):
 
     state, reward, done, _ = env.step(action)
 
-    with open('output/output.txt', 'a') as file:
+    with open('output/output2.txt', 'a') as file:
         file.write(f"Step: {step}, Action: {action}, Reward: {reward}, Done: {done}\n\n")
 
     # update trajectory
     if action != 9:
-        with open('output/export_trajectories.json', 'r') as infile:
+        with open('output/export_trajectories2.json', 'r') as infile:
             trajectories = json.load(infile)
         
         state_to_save = copy.deepcopy(old_state)
@@ -55,7 +60,7 @@ for step in range(num_max_steps):
         current_product = np.argmax(state['agents_state'][old_state['current_agent']]) if action == 0 else np.argmax(old_state['agents_state'][old_state['current_agent']])
         trajectories[f"Episode {current_product}"].append(trajectory_update)
         
-        with open('output/export_trajectories.json', 'w') as outfile:
+        with open('output/export_trajectories2.json', 'w') as outfile:
             json.dump(trajectories, outfile, indent=6)
     
     old_state = copy.deepcopy(state)

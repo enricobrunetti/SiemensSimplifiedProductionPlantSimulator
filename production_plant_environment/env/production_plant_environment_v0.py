@@ -6,30 +6,25 @@ import numpy as np
 import random
 
 class ProductionPlantEnvironment():
-    def __init__(self):
-        self.n_agents = 5
-        self.n_products = 4
-        self.n_production_skills = 4
-        self.action_space = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        self.action_time =  [5, 5, 5, 5, 2, 2, 2, 2, 0, 0]
+    def __init__(self, config = None):
+        self.config = config
+        self.n_agents = self.config['n_agents']
+        self.n_products = self.config['n_products']
+        self.n_production_skills = self.config['n_production_skills']
+        self.action_space = self.config['actions']
+        self.action_time = self.config['action_time']
+        self.action_energy = self.config['action_energy']
+        self.alpha = self.config['alpha']
+        self.beta = self.config['beta']
         self.action_mask = {}
 
         # initially mask all actions for all agents
         for i in range(self.n_agents):
             self.action_mask[i] = np.zeros(len(self.action_space))
 
-        self.agents_connections = {0: [None, 1, 2, None],
-                                   1: [None, 4, 2, 0],
-                                   2: [1, 3, None, 0],
-                                   3: [4, None, None, 2],
-                                   4: [None, None, 3, 1]}
-        
-        self.agents_skills = {0: [0], 1: [1, 3], 2: [2, 3], 3: [1, 3], 4: [2, 3]}
-
-        self.supply_agent = 0
-
-        self.current_episode = 0
-        self.episodes_status = {}
+        self.agents_connections = {int(k): v for k, v in self.config['agents_connections'].items()}
+        self.agents_skills = {int(k): v for k, v in self.config['agents_skills'].items()}
+        self.supply_agent = self.config['supply_agent']
 
     def reset(self):
         self.current_agent = 0
@@ -38,27 +33,29 @@ class ProductionPlantEnvironment():
         # for every agent we have a tuple in which the first element is 0 if the 
         # agent is free and 1 if the agent is busy. The second element report on which
         # time the agent will become free
-        self.agents_busy = {0: (0, 0), 1: (0, 0), 2: (0, 0), 3: (0, 0), 4: (0, 0)}
+        self.agents_busy = {i: (0,0) for i in range(self.n_agents)}
 
         # list of all products for which the production has not started yet
         self.waiting_products = np.array(range(self.n_products))
         self.n_completed_products = 0
         self.current_step = 0
-        self.max_step = 100
 
         self.action_mask[self.current_agent] = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
         #agents state
-        self.agents_state = np.array([[0, 0, 0, 0],
+        '''self.agents_state = np.array([[0, 0, 0, 0],
                                      [0, 0, 0, 0],
                                      [0, 0, 0, 0],
                                      [0, 0, 0, 0],
-                                     [0, 0, 0, 0]])
+                                     [0, 0, 0, 0]])'''
+        self.agents_state = np.array(self.config['agents_starting_state'])
         
-        self.products_state = np.array([[[1, 0, 0], [2, 0, 0], [3, 5, 0], [4, 6, 0]],
+        '''self.products_state = np.array([[[1, 0, 0], [2, 0, 0], [3, 5, 0], [4, 6, 0]],
                                         [[1, 0, 0], [4, 7, 0], [2, 5, 0], [3, 6, 8]],
                                         [[1, 0, 0], [3, 0, 0], [2, 0, 0], [4, 0, 0]],
-                                        [[1, 0, 0], [0, 0, 0], [0, 0, 0], [2, 0, 0]]])
+                                        [[1, 0, 0], [0, 0, 0], [0, 0, 0], [2, 0, 0]]])'''
+        
+        self.products_state = np.array(self.config['products_starting_state'])
         
         return self._next_observation()
     
