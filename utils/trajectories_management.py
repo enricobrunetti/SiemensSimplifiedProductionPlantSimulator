@@ -1,6 +1,39 @@
 import json
 import numpy as np
 
+class TrajectoryManager():
+    def __init__(self, INPUT_DIR, config):
+        self.INPUT_DIR = INPUT_DIR
+        # TO-DO: remove, now output dir is different from input only for debug purposes
+        self.OUTPUT_DIR = 'output/export_trajectories2_POSTPROCESSED.json'
+        self.config = config
+        self.n_agents = self.config['n_agents']
+        self.n_products = self.config['n_products']
+        self.agents_connections = {int(k): v for k, v in self.config['agents_connections'].items()} 
+
+        # load the trajectories
+        with open(self.INPUT_DIR, 'r') as infile:
+            self.trajectories = json.load(infile)
+
+    # remove from trajectories all the skills
+    # CAUTION: perform this before converting global trajectory into agents trajectories
+    def remove_production_skill_trajectories(self):
+        for episode in self.trajectories:
+            self.trajectories[episode] = [step for step in self.trajectories[episode] if step['action'] >= self.config['n_production_skills']]
+
+    # remove from trajectories all the action masks
+    # CAUTION: perform this before converting global trajectory into agents trajectories
+    def remove_action_masks(self):
+        for episode in self.trajectories:
+            for step in self.trajectories[episode]:
+                del step['state']['action_mask']
+
+    # save as output the trajectory
+    def save_trajectory(self):
+        with open(self.OUTPUT_DIR, 'w') as outfile:
+            json.dump(self.trajectories, outfile, indent=6)
+
+
 # TO-DO: add the confing and properly set up INPUT_DIR and n_products
 def extract_agent_trajectories(INPUT_DIR, n_agents, n_products):
 
