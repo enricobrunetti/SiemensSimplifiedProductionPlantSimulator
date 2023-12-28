@@ -28,13 +28,65 @@ class TrajectoryManager():
             for step in self.trajectories[episode]:
                 del step['state']['action_mask']
 
+    # this function allow to hide states of agents with a distance greater than observability grade for each agent
+    # CAUTION: perform this before converting global trajectory into agents trajectories
+    def set_states_observability(self, observability_grade):
+        agents_state_mask = self.compute_agents_state_mask(observability_grade)
+        for episode in self.trajectories:
+            for step in self.trajectories[episode]:
+                step['state']['agents_state'] = [lst for lst, mask in zip(step['state']['agents_state'], agents_state_mask[step['agent']]) if any(x != 0 for x in mask)]
+                products_mask = np.zeros(self.n_products)
+                for agent_state in step['state']['agents_state']:
+                    if max(agent_state) == 1:
+                        products_mask[np.argmax(agent_state)] = 1
+                for i in range(len(step['state']['products_state'])):
+                    if products_mask[i] == 0:
+                        step['state']['products_state'][i] = np.zeros_like(step['state']['products_state'][i]).tolist()
+
+    # compute a mask for each agent based on the observability grade (number of consequent neighbours to have observability on)
+    def compute_agents_state_mask(self, observability_grade):
+        agents_state_mask = {}
+        for agent in range(self.n_agents):
+            new_state = []
+            for i in range(self.n_agents):
+                new_state.append(np.zeros(self.n_products))
+            new_state[agent] = np.ones_like(new_state[agent])
+
+            neighbour = {}
+            for i in range(observability_grade):
+                if i == 0:
+                    neighbour = {elem for elem in self.agents_connections[agent] if elem != None}
+                else:
+                    for elem in neighbour:
+                        new_neighbours = {new_elem for new_elem in self.agents_connections[elem] if new_elem != None}
+                        neighbour = neighbour.union(new_neighbours)
+
+            for elem in neighbour:
+                new_state[elem] = np.ones_like(new_state[elem])
+                
+            
+            agents_state_mask[agent] = np.array(new_state)
+        
+        return agents_state_mask
+    
+    # convert global trajectory into agents trajectories
+    def extract_agent_trajectories(self):
+        filtered_episodes = {}
+        for agent in range(self.n_agents):
+            agent_name = f'Agent: {agent}'
+            filtered_episodes[agent_name] = {}
+            for key, value in self.trajectories.items():
+                filtered_episodes[agent_name][key] = [filtered_val for filtered_val in value if filtered_val['agent'] == agent]
+
+        self.trajectories = filtered_episodes
+
     # save as output the trajectory
     def save_trajectory(self):
         with open(self.OUTPUT_DIR, 'w') as outfile:
             json.dump(self.trajectories, outfile, indent=6)
 
 
-# TO-DO: add the confing and properly set up INPUT_DIR and n_products
+'''# TO-DO: add the confing and properly set up INPUT_DIR and n_products
 def extract_agent_trajectories(INPUT_DIR, n_agents, n_products):
 
     with open('output/export_trajectories.json', 'r') as infile:
@@ -98,7 +150,7 @@ def compute_agents_state_mask(n_agents, n_products, observability_grade):
         
         agents_state_mask[agent] = np.array(new_state)
     
-    return agents_state_mask
+    return agents_state_mask'''
 
 # TO-DO: include the usage of INPUT_DIR
 def split_data_single_agent(INPUT_DIR, agent):

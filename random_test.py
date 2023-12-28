@@ -2,16 +2,11 @@ import numpy as np
 import random
 import json
 
-CONFIG_PATH = "config/config.json"
-                  
-with open(CONFIG_PATH) as config_file:
-    config = json.load(config_file)
+# Esempio di liste di liste
+lista_principale = [[1, 0, 3], [0, 0, 0], [4, 5, 6], [0, 0, 0]]
+maschera = [[1, 0, 1], [0, 0, 0], [1, 1, 1], [0, 0, 0]]
 
-agents_connections = {int(k): v for k, v in config['agents_connections'].items()}
+# Filtraggio delle liste con tutti gli zeri nella maschera
+risultato = [lst for lst, mask in zip(lista_principale, maschera) if any(x != 0 for x in mask)]
 
-print(agents_connections)
-
-agents_state = np.array(config['agents_starting_state'])
-
-print(agents_state)
-    
+print(risultato)
