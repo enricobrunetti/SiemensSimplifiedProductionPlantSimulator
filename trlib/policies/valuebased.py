@@ -81,6 +81,8 @@ class EpsilonGreedy(ValueBased):
         if np.random.uniform() < self._epsilon:
             return np.array([self._actions[np.random.choice(self._n_actions)]])
         else:
+            # added to debug
+            print(f'probabilities of the policy: {self._q_values(state)}')
             return np.array([self._actions[np.argmax(self._q_values(state))]])
         
 class Softmax(ValueBased):
