@@ -8,6 +8,8 @@ with open(CONFIG_PATH) as config_file:
     config = json.load(config_file)
 
 tm = TrajectoryManager(INPUT_DIR, config)
+# one-step or semi-mdp
+tm.compute_reward('semi-mdp')
 tm.remove_production_skill_trajectories()
 tm.remove_action_masks()
 tm.set_states_observability(1)

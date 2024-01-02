@@ -471,7 +471,7 @@
                               ]
                         },
                         "action": 6,
-                        "reward": 1
+                        "reward": 2
                   },
                   {
                         "time": 25,
@@ -825,7 +825,7 @@
                               ]
                         },
                         "action": 6,
-                        "reward": 1
+                        "reward": 23
                   }
             ],
             "Episode 1": [
@@ -1063,7 +1063,7 @@
                               ]
                         },
                         "action": 6,
-                        "reward": 1
+                        "reward": 10
                   },
                   {
                         "time": 56,
@@ -1299,7 +1299,7 @@
                               ]
                         },
                         "action": 6,
-                        "reward": 1
+                        "reward": 24
                   }
             ],
             "Episode 2": [
@@ -1537,7 +1537,7 @@
                               ]
                         },
                         "action": 6,
-                        "reward": 1
+                        "reward": 14
                   }
             ],
             "Episode 3": [
@@ -1657,7 +1657,7 @@
                               ]
                         },
                         "action": 5,
-                        "reward": 1
+                        "reward": 5
                   }
             ]
       },
@@ -1785,7 +1785,7 @@
                               ]
                         },
                         "action": 5,
-                        "reward": 1
+                        "reward": 17
                   }
             ],
             "Episode 1": [],
@@ -1916,7 +1916,7 @@
                               ]
                         },
                         "action": 7,
-                        "reward": 1
+                        "reward": 2
                   },
                   {
                         "time": 32,
@@ -2288,7 +2288,7 @@
                               ]
                         },
                         "action": 4,
-                        "reward": 1
+                        "reward": 22
                   }
             ],
             "Episode 1": [
@@ -2414,7 +2414,7 @@
                               ]
                         },
                         "action": 7,
-                        "reward": 1
+                        "reward": 2
                   },
                   {
                         "time": 62,
@@ -2538,7 +2538,7 @@
                               ]
                         },
                         "action": 5,
-                        "reward": 1
+                        "reward": 23
                   }
             ],
             "Episode 2": [
@@ -2664,7 +2664,7 @@
                               ]
                         },
                         "action": 4,
-                        "reward": 1
+                        "reward": 9
                   }
             ],
             "Episode 3": []
@@ -2788,7 +2788,7 @@
                               ]
                         },
                         "action": 4,
-                        "reward": 1
+                        "reward": 10
                   }
             ],
             "Episode 2": [],
@@ -2913,7 +2913,7 @@
                               ]
                         },
                         "action": 6,
-                        "reward": 1
+                        "reward": 9
                   }
             ],
             "Episode 2": [],

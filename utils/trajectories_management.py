@@ -15,6 +15,36 @@ class TrajectoryManager():
         with open(self.INPUT_DIR, 'r') as infile:
             self.trajectories = json.load(infile)
 
+    # select function to use in order to compute rewards
+    # CAUTION: perform this before converting global trajectory into agents trajectories
+    def compute_reward(self, reward_type = 'one-step'):
+        if reward_type == 'one_step':
+            self.compute_one_step_reward()
+        elif reward_type == 'semi-mdp':
+            self.compute_semiMDP_reward()
+
+    # give the reward of the action performed to the agent that moved there the product
+    # CAUTION: perform this before converting global trajectory into agents trajectories
+    def compute_one_step_reward(self):
+        for episode in self.trajectories:
+            for i in range(len(self.trajectories[episode]) - 1):
+                self.trajectories[episode][i]['reward'] = self.trajectories[episode][i + 1]['reward'] 
+
+    # give the cumulative reward of all the actions performed until the agent take again the product (if the agent
+    # don't take again the product use the comulative reward until the end of the episode)
+    # CAUTION: perform this before converting global trajectory into agents trajectories
+    def compute_semiMDP_reward(self):
+        for episode in self.trajectories:
+            for i in range(len(self.trajectories[episode]) - 1):
+                agent = self.trajectories[episode][i]['agent']
+                reward = self.trajectories[episode][i]['reward']
+                j = i + 1
+                while j < len(self.trajectories[episode]) and self.trajectories[episode][j]['agent'] != agent:
+                    reward += self.trajectories[episode][j]['reward']
+                    j += 1
+                self.trajectories[episode][i]['reward'] = reward
+
+
     # remove from trajectories all the skills
     # CAUTION: perform this before converting global trajectory into agents trajectories
     def remove_production_skill_trajectories(self):
