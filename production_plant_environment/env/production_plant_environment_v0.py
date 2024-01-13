@@ -40,12 +40,13 @@ class ProductionPlantEnvironment():
         self.n_completed_products = 0
         self.current_step = 0
 
-        self.action_mask[self.current_agent] = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        self.action_mask[self.current_agent] = [0 for i in range(len(self.action_space))]
+        self.action_mask[self.current_agent][0] = 1
 
-        #agents state
+        # agents state
         self.agents_state = np.array(self.config['agents_starting_state'])
 
-        #produts state
+        # produts state
         self.products_state = np.array(self.config['products_starting_state'])
         
         return self._next_observation()
@@ -54,7 +55,6 @@ class ProductionPlantEnvironment():
         return {'current_agent': self.current_agent, 'time': self.time, 'agents_state': self.agents_state, 'products_state': self.products_state, 'action_mask': self.action_mask, 'agents_busy': self.agents_busy}
 
     def _take_action(self, action):
-        # TO-DO: try to accorpate production skills and transfer actions
         # perform production skills
         # # agent with supply skill take a new product and perform supply action
         if action == 0:
@@ -71,61 +71,32 @@ class ProductionPlantEnvironment():
                 self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
                 self.action_mask[self.supply_agent] = self.compute_mask(self.supply_agent, next_product)
                 self.agents_busy[self.supply_agent] = (1, self.time + self.action_time[action])
-        elif action == 1:
-            self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
-            self.action_mask[self.current_agent] = self.compute_mask(self.current_agent, np.argmax(self.agents_state[self.current_agent] == 1))
-            self.agents_busy[self.current_agent] = (1, self.time + self.action_time[action])
-        elif action == 2:
-            self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
-            self.action_mask[self.current_agent] = self.compute_mask(self.current_agent, np.argmax(self.agents_state[self.current_agent] == 1))
-            self.agents_busy[self.current_agent] = (1, self.time + self.action_time[action])
-        elif action == 3:
+        elif action < self.n_production_skills:
             self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
             self.action_mask[self.current_agent] = self.compute_mask(self.current_agent, np.argmax(self.agents_state[self.current_agent] == 1))
             self.agents_busy[self.current_agent] = (1, self.time + self.action_time[action])
         # perform transfer actions
-        elif action == 4:
-            next_agent = self.agents_connections[self.current_agent][0]
+        elif action < self.n_production_skills+4:
+            next_agent = self.agents_connections[self.current_agent][action - self.n_production_skills]
             self.agents_state[next_agent] = self.agents_state[self.current_agent]
             self.agents_state[self.current_agent] = np.zeros_like(self.agents_state[self.current_agent])
             self.action_mask[self.current_agent] = np.zeros_like(self.action_mask[self.current_agent])
             self.action_mask[next_agent] = self.compute_mask(next_agent, np.argmax(self.agents_state[next_agent] == 1))
             self.agents_busy[next_agent] = (1, self.time + self.action_time[action])
-        elif action == 5:
-            next_agent = self.agents_connections[self.current_agent][1]
-            self.agents_state[next_agent] = self.agents_state[self.current_agent]
-            self.agents_state[self.current_agent] = np.zeros_like(self.agents_state[self.current_agent])
-            self.action_mask[self.current_agent] = np.zeros_like(self.action_mask[self.current_agent])
-            self.action_mask[next_agent] = self.compute_mask(next_agent, np.argmax(self.agents_state[next_agent] == 1))
-            self.agents_busy[next_agent] = (1, self.time + self.action_time[action])
-        elif action == 6:
-            next_agent = self.agents_connections[self.current_agent][2]
-            self.agents_state[next_agent] = self.agents_state[self.current_agent]
-            self.agents_state[self.current_agent] = np.zeros_like(self.agents_state[self.current_agent])
-            self.action_mask[self.current_agent] = np.zeros_like(self.action_mask[self.current_agent])
-            self.action_mask[next_agent] = self.compute_mask(next_agent, np.argmax(self.agents_state[next_agent] == 1))
-            self.agents_busy[next_agent] = (1, self.time + self.action_time[action])
-        elif action == 7:
-            next_agent = self.agents_connections[self.current_agent][3]
-            self.agents_state[next_agent] = self.agents_state[self.current_agent]
-            self.agents_state[self.current_agent] = np.zeros_like(self.agents_state[self.current_agent])
-            self.action_mask[self.current_agent] = np.zeros_like(self.action_mask[self.current_agent])
-            self.action_mask[next_agent] = self.compute_mask(next_agent, np.argmax(self.agents_state[next_agent] == 1))
-            self.agents_busy[next_agent] = (1, self.time + self.action_time[action])
-        elif action == 8:
-            pass
+        elif action == self.n_production_skills+4:
+            self.agents_busy[self.current_agent] = (1, self.time + self.action_time[action])
         # all the actions have been masked -> no action available (agent standby)
         else:
             pass
 
         # if we have transfered from supply agent then allow it to get a new product
-        if action >= 4 and action <= 7 and self.current_agent == self.supply_agent:
+        if action >= self.n_production_skills and action < self.n_production_skills+4 and self.current_agent == self.supply_agent:
             self.action_mask[self.current_agent] = self.compute_mask(self.current_agent)
 
         self.update_trasnfer_mask()
         
         # increase time for every action in which we don't have an empty agent doing nothing
-        if (not (action == 9 and self.agents_busy[self.current_agent][0] == 0)):
+        if (not (action == self.action_space[-1] and self.agents_busy[self.current_agent][0] == 0)):
             self.time += 1
 
         # return as reward the execution time of the action
@@ -188,12 +159,11 @@ class ProductionPlantEnvironment():
                 mask[0] = 1
         return mask
 
-    # return an array containing 4 elements, one corresponding to the next skill
+    # return an array containing n_production_skills elements, one corresponding to the next skill
     # to perform on the product (if availvale for that agent) and zeroes corresponding 
     # to the skills that aren't the next one or can't be performed
     def compute_production_skill_masking(self, agent, product):
         mask = np.zeros(self.n_production_skills)
-        #skill = np.argmax(self.products_state[product] == 1)
         skills = [i for i in range(len(self.products_state[product])) if 1 in self.products_state[product][i]]
         skill = skills[0] if len(skills) > 0 else 0
         if skill in self.agents_skills[agent]:
@@ -220,10 +190,10 @@ class ProductionPlantEnvironment():
     def update_trasnfer_mask(self):
         for agent in self.agents_connections:
             if self.hasProduct(agent):
-                for i in range(4, 8):
-                    if self.agents_connections[agent][i-4] != None and self.hasProduct(self.agents_connections[agent][i - 4]):
+                for i in range(self.n_production_skills, self.n_production_skills+4):
+                    if self.agents_connections[agent][i - self.n_production_skills] != None and self.hasProduct(self.agents_connections[agent][i - self.n_production_skills]):
                         self.action_mask[agent][i] = 0
-                    elif self.agents_connections[agent][i-4] != None and (not self.hasProduct(self.agents_connections[agent][i - 4]) and np.all(self.action_mask[agent][:self.n_production_skills] == 0)):
+                    elif self.agents_connections[agent][i - self.n_production_skills] != None and (not self.hasProduct(self.agents_connections[agent][i - self.n_production_skills]) and np.all(self.action_mask[agent][:self.n_production_skills] == 0)):
                         self.action_mask[agent][i] = 1
 
     # utility function for update_transfer_mask

@@ -2,10 +2,9 @@ import json
 import numpy as np
 
 class TrajectoryManager():
-    def __init__(self, INPUT_DIR, config):
+    def __init__(self, INPUT_DIR, OUTPUT_DIR, config):
         self.INPUT_DIR = INPUT_DIR
-        # TO-DO: remove, now output dir is different from input only for debug purposes
-        self.OUTPUT_DIR = 'output/export_trajectories2_POSTPROCESSED.json'
+        self.OUTPUT_DIR = OUTPUT_DIR
         self.config = config
         self.n_agents = self.config['n_agents']
         self.n_products = self.config['n_products']
@@ -17,18 +16,29 @@ class TrajectoryManager():
 
     # select function to use in order to compute rewards
     # CAUTION: perform this before converting global trajectory into agents trajectories
-    def compute_reward(self, reward_type = 'one-step'):
-        if reward_type == 'one_step':
-            self.compute_one_step_reward()
+    def compute_reward(self):
+        reward_type = self.config['reward_type']
+        if reward_type == 'one-step':
+            self.compute_step_reward(self.config['reward_n_steps'])
         elif reward_type == 'semi-mdp':
             self.compute_semiMDP_reward()
 
-    # give the reward of the action performed to the agent that moved there the product
+    # give to each action the cumulative reward of all actions for n_steps (a step is mand by all actions between one
+    # transport/defer action and the followirng one)
     # CAUTION: perform this before converting global trajectory into agents trajectories
-    def compute_one_step_reward(self):
+    def compute_step_reward(self, n_steps = 1):
         for episode in self.trajectories:
             for i in range(len(self.trajectories[episode]) - 1):
-                self.trajectories[episode][i]['reward'] = self.trajectories[episode][i + 1]['reward'] 
+                reward = self.trajectories[episode][i]['reward']
+                j = i + 1
+                steps = 0
+                while j < len(self.trajectories[episode]) and steps < n_steps:
+                    if self.trajectories[episode][j]['action'] >= self.config['n_production_skills']:
+                        steps += 1
+                    if steps < n_steps:
+                        reward += self.trajectories[episode][j]['reward']
+                        j += 1
+                self.trajectories[episode][i]['reward'] = reward
 
     # give the cumulative reward of all the actions performed until the agent take again the product (if the agent
     # don't take again the product use the comulative reward until the end of the episode)
@@ -60,7 +70,8 @@ class TrajectoryManager():
 
     # this function allow to hide states of agents with a distance greater than observability grade for each agent
     # CAUTION: perform this before converting global trajectory into agents trajectories
-    def set_states_observability(self, observability_grade):
+    def set_states_observability(self):
+        observability_grade = self.config['observability_grade']
         agents_state_mask = self.compute_agents_state_mask(observability_grade)
         for episode in self.trajectories:
             for step in self.trajectories[episode]:
@@ -117,7 +128,7 @@ class TrajectoryManager():
 
 # TO-DO: include the usage of INPUT_DIR
 def split_data_single_agent(INPUT_DIR, agent):
-    with open('output/export_trajectories2_POSTPROCESSED.json', 'r') as infile:
+    with open(INPUT_DIR, 'r') as infile:
         trajectories = json.load(infile)
     
     trajectory = trajectories[f'Agent: {agent}']

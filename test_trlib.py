@@ -7,14 +7,12 @@ from trlib.policies.qfunction import ZeroQ
 from trlib.algorithms.reinforcement.fqi import FQI
 from sklearn.ensemble import ExtraTreesRegressor
 
-#extract_agent_trajectories("prova", 5, 4)
+INPUT_DIR = "output/export_trajectories3_POSTPROCESSED.json"
 
-#set_agents_state_observability("prova", 5, 4, 1)
-
+# TO-DO: move this inside environment class
 class MDP():
     def __init__(self):
         self.action_space = None
-        # ATTENTION: UNDERSTAND WHAT TO PLACE HERE
         self.state_dim = 60
         self.action_dim = 1
         self.gamma = 0.999
@@ -27,7 +25,7 @@ if __name__ == '__main__':
 
     regressor_params = {'n_estimators': 100,
                         'criterion': 'squared_error',
-                        'min_samples_split':10}
+                        'min_samples_split': 10}
     
     max_iterations = 1
     batch_size = 1
@@ -48,7 +46,7 @@ if __name__ == '__main__':
         np.random.seed()
 
     algorithm.reset()
-    _, _, _, r, s_prime, absorbing, sa = split_data_single_agent("prova", 0)
+    _, _, _, r, s_prime, absorbing, sa = split_data_single_agent(INPUT_DIR, 0)
 
     for _ in range(max_iterations):
         algorithm._iter(sa, r, s_prime, absorbing, **fit_params)
