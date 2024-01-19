@@ -7,13 +7,13 @@ from trlib.policies.qfunction import ZeroQ
 from trlib.algorithms.reinforcement.fqi import FQI
 from sklearn.ensemble import ExtraTreesRegressor
 
-INPUT_DIR = "output/export_trajectories3_POSTPROCESSED.json"
+INPUT_DIR = "output/export_trajectories5_POSTPROCESSED.json"
 
 # TO-DO: move this inside environment class
 class MDP():
     def __init__(self):
         self.action_space = None
-        self.state_dim = 60
+        self.state_dim = 105 
         self.action_dim = 1
         self.gamma = 0.999
 
@@ -21,10 +21,9 @@ if __name__ == '__main__':
 
     mdp = MDP()
 
-    actions = [4, 5, 6, 7, 8]
+    actions = [6, 7, 8, 9, 10]
 
     regressor_params = {'n_estimators': 100,
-                        'criterion': 'squared_error',
                         'min_samples_split': 10}
     
     max_iterations = 1
