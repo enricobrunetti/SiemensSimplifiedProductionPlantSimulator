@@ -1,8 +1,8 @@
 import json
 from utils.trajectories_management import TrajectoryManager
 
-INPUT_DIR = 'output/export_trajectories5.json'
-OUTPUT_DIR = 'output/export_trajectories5_POSTPROCESSED.json'
+INPUT_DIR = 'output/export_trajectories6'
+OUTPUT_DIR = 'output/export_trajectories6_POSTPROCESSED.json'
 CONFIG_PATH = "config/config.json"
 
 with open(CONFIG_PATH) as config_file:

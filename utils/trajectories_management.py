@@ -8,11 +8,22 @@ class TrajectoryManager():
         self.config = config
         self.n_agents = self.config['n_agents']
         self.n_products = self.config['n_products']
+        self.n_runs = self.config['n_runs']
         self.agents_connections = {int(k): v for k, v in self.config['agents_connections'].items()} 
+        self.trajectories = {}
+        self.time_ordered_trajectories = {}
 
         # load the trajectories
-        with open(self.INPUT_DIR, 'r') as infile:
-            self.trajectories = json.load(infile)
+        for i in range(self.n_runs):
+            with open(f'{self.INPUT_DIR}_{i}.json', 'r') as infile:
+                new_run_trajectory = json.load(infile)
+                self.trajectories.update(new_run_trajectory)
+                self.time_ordered_trajectories[i] = new_run_trajectory
+        
+        # order by time the trajectory of each run
+        for key in self.time_ordered_trajectories.keys():
+            self.time_ordered_trajectories[key] = [item for sublist in self.time_ordered_trajectories[key].values() for item in sublist]
+            self.time_ordered_trajectories[key] = sorted(self.time_ordered_trajectories[key], key=lambda x: x['time'])
 
     # select function to use in order to compute rewards
     # CAUTION: perform this before converting global trajectory into agents trajectories
@@ -22,8 +33,10 @@ class TrajectoryManager():
             self.compute_step_reward(self.config['reward_n_steps'])
         elif reward_type == 'semi-mdp':
             self.compute_semiMDP_reward()
+        elif reward_type == 'negative-reward':
+            self.compute_negative_reward()
 
-    # give to each action the cumulative reward of all actions for n_steps (a step is mand by all actions between one
+    # give to each action the cumulative reward of all actions for n_steps (a step is made by all actions between one
     # transport/defer action and the followirng one)
     # CAUTION: perform this before converting global trajectory into agents trajectories
     def compute_step_reward(self, n_steps = 1):
@@ -53,7 +66,50 @@ class TrajectoryManager():
                     reward += self.trajectories[episode][j]['reward']
                     j += 1
                 self.trajectories[episode][i]['reward'] = reward
+    
+    # give at each agent for each action a reward equal to -1 times the number of products that the agent
+    # saw but are not completed yet
+    # CAUTION: perform this before converting global trajectory into agents trajectories
+    def compute_negative_reward(self):
+        for key in self.time_ordered_trajectories:
+            agents_seen_products = [[0 for i in range(self.n_products)] for j in range(self.n_agents)]
+            for i in range(len(self.time_ordered_trajectories[key])):
+                agent = self.time_ordered_trajectories[key][i]['agent']
+                if 1 in self.time_ordered_trajectories[key][i]['state']['agents_state'][agent]:
+                    product = self.time_ordered_trajectories[key][i]['state']['agents_state'][agent].index(1)
+                    agents_seen_products[agent][product] = 1
+                for j in range(self.n_products):
+                    if all(elem == 0 for elem in np.array(self.time_ordered_trajectories[key][i]['state']['products_state'][j]).flatten()):
+                        agents_seen_products[agent][j] = 0
+                self.time_ordered_trajectories[key][i]['reward'] = -1 * agents_seen_products[agent].count(1)
 
+        episode_number = 0
+        run_number = -1
+        for episode in self.trajectories:
+            if episode_number % self.n_products == 0:
+                run_number += 1
+            episode_number += 1
+
+            for i in range(len(self.trajectories[episode])):
+                self.trajectories[episode][i]['reward'] = next(item for item in self.time_ordered_trajectories[run_number] if item['time'] == self.trajectories[episode][i]['time'])['reward']
+
+
+
+    def compute_negative_reward2(self):
+        episode_number = 0
+        for episode in self.trajectories:
+            if episode_number % self.n_products == 0:
+                agents_seen_products = [[0 for i in range(self.n_products)] for j in range(self.n_agents)]
+            episode_number += 1
+            for i in range(len(self.trajectories[episode])):
+                agent = self.trajectories[episode][i]['agent']
+                if 1 in self.trajectories[episode][i]['state']['agents_state'][agent]:
+                    product = self.trajectories[episode][i]['state']['agents_state'][agent].index(1)
+                    agents_seen_products[agent][product] = 1
+                for j in range(self.n_products):
+                    if all(elem == 0 for elem in np.array(self.trajectories[episode][i]['state']['products_state'][j]).flatten()):
+                        agents_seen_products[agent][j] = 0
+                self.trajectories[episode][i]['reward'] = -1 * agents_seen_products[agent].count(1)
 
     # remove from trajectories all the skills
     # CAUTION: perform this before converting global trajectory into agents trajectories
