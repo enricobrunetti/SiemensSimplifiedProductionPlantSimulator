@@ -7,7 +7,7 @@ from trlib.policies.qfunction import ZeroQ
 from trlib.algorithms.reinforcement.fqi import FQI
 from sklearn.ensemble import ExtraTreesRegressor
 
-INPUT_DIR = "output/export_trajectories5_POSTPROCESSED.json"
+INPUT_DIR = "output/export_trajectories6_POSTPROCESSED.json"
 
 # TO-DO: move this inside environment class
 class MDP():
@@ -45,7 +45,7 @@ if __name__ == '__main__':
         np.random.seed()
 
     algorithm.reset()
-    _, _, _, r, s_prime, absorbing, sa = split_data_single_agent(INPUT_DIR, 0)
+    _, _, _, r, s_prime, absorbing, sa, _ = split_data_single_agent(INPUT_DIR, 0)
 
     for _ in range(max_iterations):
         algorithm._iter(sa, r, s_prime, absorbing, **fit_params)

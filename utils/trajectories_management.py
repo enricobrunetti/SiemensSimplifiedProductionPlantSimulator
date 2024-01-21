@@ -117,11 +117,12 @@ class TrajectoryManager():
         for episode in self.trajectories:
             self.trajectories[episode] = [step for step in self.trajectories[episode] if step['action'] >= self.config['n_production_skills']]
 
-    # remove from trajectories all the action masks
+    # remove from state all the action masks but save the ones of the current agent concerning transport and defer actions
     # CAUTION: perform this before converting global trajectory into agents trajectories
     def remove_action_masks(self):
         for episode in self.trajectories:
             for step in self.trajectories[episode]:
+                step['action_mask'] = step['state']['action_mask'][f'{step["agent"]}'][6:11]
                 del step['state']['action_mask']
 
     # this function allow to hide states of agents with a distance greater than observability grade for each agent
@@ -182,7 +183,6 @@ class TrajectoryManager():
         with open(self.OUTPUT_DIR, 'w') as outfile:
             json.dump(self.trajectories, outfile, indent=6)
 
-# TO-DO: include the usage of INPUT_DIR
 def split_data_single_agent(INPUT_DIR, agent):
     with open(INPUT_DIR, 'r') as infile:
         trajectories = json.load(infile)
@@ -195,6 +195,7 @@ def split_data_single_agent(INPUT_DIR, agent):
     s_prime = []
     absorbing = []
     sa = []
+    m = []
     for episode in trajectory:
         for i in range(len(trajectory[episode])):
             t.append(trajectory[episode][i]['time'])
@@ -205,6 +206,7 @@ def split_data_single_agent(INPUT_DIR, agent):
             temp_sa = flatten_dict_values(trajectory[episode][i]['state'])
             temp_sa.append(trajectory[episode][i]['action'])
             sa.append(temp_sa)
+            m.append(trajectory[episode][i]['action_mask'])
 
     # TO-DO: fix s_prime
     s_prime = s[1:]
@@ -212,7 +214,7 @@ def split_data_single_agent(INPUT_DIR, agent):
     print(len(s))
     print(len(sa))
     print(f'len of s: {len(s[0])}')
-    return np.array(t), np.array(s), np.array(a), np.array(r), np.array(s_prime), np.array(absorbing), np.array(sa)
+    return np.array(t), np.array(s), np.array(a), np.array(r), np.array(s_prime), np.array(absorbing), np.array(sa), np.array(m)
 
 def flatten_dict_values(d):
     flattened_values = []
