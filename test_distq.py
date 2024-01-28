@@ -4,9 +4,10 @@ from utils.trajectories_management import split_data_single_agent
 INPUT_DIR = "output/export_trajectories6_POSTPROCESSED.json"
 
 num_agents = 9
+num_products = 5
 actions = [6, 7, 8, 9, 10]
 
-agents_qlearning = [QLearningAgent(actions) for _ in range(num_agents)]
+agents_qlearning = [QLearningAgent(actions, num_products) for _ in range(num_agents)]
 
 for i in range(num_agents):
     agent = agents_qlearning[i]
