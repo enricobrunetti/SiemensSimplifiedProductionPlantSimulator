@@ -34,6 +34,7 @@ if __name__ == '__main__':
     fit_params = {}
 
     # FQI
+    # TO-DO: befor FQI fix absorbing (see trajectories_management)
     pi = EpsilonGreedy(actions, ZeroQ(), 0)
 
     algorithm = FQI(mdp, pi, verbose = True, actions = actions,

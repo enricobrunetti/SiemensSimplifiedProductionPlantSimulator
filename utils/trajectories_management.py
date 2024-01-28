@@ -162,7 +162,6 @@ class TrajectoryManager():
             for elem in neighbour:
                 new_state[elem] = np.ones_like(new_state[elem])
                 
-            
             agents_state_mask[agent] = np.array(new_state)
         
         return agents_state_mask
@@ -183,6 +182,43 @@ class TrajectoryManager():
         with open(self.OUTPUT_DIR, 'w') as outfile:
             json.dump(self.trajectories, outfile, indent=6)
 
+# this function prepare input data for the distributed learning and works only
+# if trajectories are global (extract_agent_trajectories has NOT been called)
+def split_data_global(INPUT_DIR):
+    with open(INPUT_DIR, 'r') as infile:
+        trajectories = json.load(infile)
+    
+    t = []
+    s = []
+    a = []
+    r = []
+    s_prime = []
+    absorbing = []
+    sa = []
+    m = []
+    agents = []
+    for episode in trajectories:
+        for i in range(len(trajectories[episode])):
+            t.append(trajectories[episode][i]['time'])
+            s.append(flatten_dict_values(trajectories[episode][i]['state']))
+            a.append(trajectories[episode][i]['action'])
+            r.append(trajectories[episode][i]['reward'])
+            # TO-DO: fix absorbing, for now it works only for the last agent that sees each product
+            # but should work for the last time that each agent see that product
+            absorbing.append(1 if i == (len(trajectories[episode]) - 1) else 0)
+            temp_sa = flatten_dict_values(trajectories[episode][i]['state'])
+            temp_sa.append(trajectories[episode][i]['action'])
+            sa.append(temp_sa)
+            m.append(trajectories[episode][i]['action_mask'])
+            agents.append(trajectories[episode][i]['agent'])
+
+    # TO-DO: fix s_prime
+    s_prime = s[1:]
+    s_prime.append(s[-1])
+    return t, s, a, r, s_prime, absorbing, sa, m, agents
+
+# this function prepare input data for the selected agent learning but works only
+# if extract_agent_trajectories function has been called
 def split_data_single_agent(INPUT_DIR, agent):
     with open(INPUT_DIR, 'r') as infile:
         trajectories = json.load(infile)
