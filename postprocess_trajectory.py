@@ -2,7 +2,7 @@ import json
 from utils.trajectories_management import TrajectoryManager
 
 INPUT_DIR = 'output/export_trajectories6'
-OUTPUT_DIR = 'output/export_trajectories7_POSTPROCESSED.json'
+OUTPUT_DIR = 'output/export_trajectories8_POSTPROCESSED.json'
 CONFIG_PATH = "config/config.json"
 
 with open(CONFIG_PATH) as config_file:

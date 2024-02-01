@@ -132,6 +132,11 @@ class TrajectoryManager():
         agents_state_mask = self.compute_agents_state_mask(observability_grade)
         for episode in self.trajectories:
             for step in self.trajectories[episode]:
+                # add the current agent state to be able to retrieve only that if necessary
+                step['state']['curr_agent_state'] = step['state']['agents_state'][step['agent']]
+                # add the current product skill progress to be able to retrieve only that if necessary
+                step['state']['curr_product_skills'] = step['state']['products_state'][np.argmax(step['state']['curr_agent_state'])]
+
                 step['state']['agents_state'] = [lst for lst, mask in zip(step['state']['agents_state'], agents_state_mask[step['agent']]) if any(x != 0 for x in mask)]
                 products_mask = np.zeros(self.n_products)
                 for agent_state in step['state']['agents_state']:
@@ -200,12 +205,15 @@ def split_data_global(INPUT_DIR):
     for episode in trajectories:
         for i in range(len(trajectories[episode])):
             t.append(trajectories[episode][i]['time'])
-            s.append(flatten_dict_values(trajectories[episode][i]['state']))
+            # TO-DO: check what is better
+            #s.append(flatten_dict_values(trajectories[episode][i]['state']))
+            s.append(trajectories[episode][i]['state'])
             a.append(trajectories[episode][i]['action'])
             r.append(trajectories[episode][i]['reward'])
             # TO-DO: fix absorbing, for now it works only for the last agent that sees each product
             # but should work for the last time that each agent see that product
             absorbing.append(1 if i == (len(trajectories[episode]) - 1) else 0)
+            # TO-DO: check if you have to change depending on what decided for s
             temp_sa = flatten_dict_values(trajectories[episode][i]['state'])
             temp_sa.append(trajectories[episode][i]['action'])
             sa.append(temp_sa)

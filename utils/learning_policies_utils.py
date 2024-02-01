@@ -1,5 +1,11 @@
 import numpy as np
 
+# given a state return an observation which consists of the product that the current agent has
+# and of the current skill progress of that specific product
+def get_agent_state_and_product_skill_observation(state):
+    return f'{state["curr_agent_state"]}, {state["curr_product_skills"]}'
+
+# Queste due funzioni sono relative alla vecchia implementazione, vedere se rimuoverle
 def get_agents_informations(config, learning_agents, n_current_agent, observability_grade, state, action):
     n_agents = config['n_agents']
     n_products = config['n_products']

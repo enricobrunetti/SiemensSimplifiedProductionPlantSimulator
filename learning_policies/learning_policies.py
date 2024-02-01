@@ -1,5 +1,51 @@
 import numpy as np
 
+class DistributedQLearningAgent:
+    def __init__(self, actions, n_products, alpha=0.7, gamma=0.9):
+        self.actions = actions
+        self.actions_space = len(self.actions)
+        # learning rate
+        self.alpha = alpha
+        # discount factor
+        self.gamma = gamma
+        self.default_q_value = -n_products / (1 - self.gamma)
+        self.values = {}
+
+    def update_values(self, observation, action, reward, agents_information):
+        action = action - self.actions[0]
+    
+        if observation not in self.values.keys():
+            self.values[observation] = {}
+            self.values[observation]['Q'] = [self.default_q_value] * self.actions_space
+            self.values[observation]['T'] = [0] * self.actions_space
+
+        lr = self.alpha
+
+        current_q_value = self.values[observation]['Q'][action]
+        next_q_value = (1 - lr) * current_q_value + lr * (reward + self.gamma * agents_information)
+
+        self.values[observation]['Q'][action] = next_q_value
+        self.values[observation]['T'][action] += 1
+
+    def select_action(self, observation, exploration_prob, mask):
+        allowed_actions = [action for action, mask in zip(self.actions, mask) if mask != 0]
+        if np.random.rand() < exploration_prob:
+            print('random action choosen')
+            return np.random.choice(allowed_actions)
+        else:
+            decreased_actions = [action - self.actions[0] for action in allowed_actions]
+            q_values = [self.values[observation]['Q'][a] for a in decreased_actions]
+            print(f'actions: {allowed_actions}, q_values: {q_values}')
+            return allowed_actions[np.argmax(q_values)]
+        
+    def get_max_value(self, observation):
+        if observation not in self.values.keys():
+            return self.default_q_value
+        return np.max(self.values[observation]['Q'])
+
+    def get_values(self, observation, action):
+        return self.values[observation]['Q'][action]
+
 class QLearningAgent:
     def __init__(self, actions, n_products, alpha=0.7, gamma=0.9):
         self.actions = actions
