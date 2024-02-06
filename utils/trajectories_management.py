@@ -132,11 +132,6 @@ class TrajectoryManager():
         agents_state_mask = self.compute_agents_state_mask(observability_grade)
         for episode in self.trajectories:
             for step in self.trajectories[episode]:
-                # add the current agent state to be able to retrieve only that if necessary
-                step['state']['curr_agent_state'] = step['state']['agents_state'][step['agent']]
-                # add the current product skill progress to be able to retrieve only that if necessary
-                step['state']['curr_product_skills'] = step['state']['products_state'][np.argmax(step['state']['curr_agent_state'])]
-
                 step['state']['agents_state'] = [lst for lst, mask in zip(step['state']['agents_state'], agents_state_mask[step['agent']]) if any(x != 0 for x in mask)]
                 products_mask = np.zeros(self.n_products)
                 for agent_state in step['state']['agents_state']:
@@ -145,6 +140,15 @@ class TrajectoryManager():
                 for i in range(len(step['state']['products_state'])):
                     if products_mask[i] == 0:
                         step['state']['products_state'][i] = np.zeros_like(step['state']['products_state'][i]).tolist()
+
+    # extract state of current agent and product skills of his product for DISTQ algorithm
+    def extract_agent_state_and_product_skills_for_DISTQ(self):
+        for episode in self.trajectories:
+            for step in self.trajectories[episode]:
+                # add the current agent state to be able to retrieve only that if necessary
+                step['state']['curr_agent_state'] = step['state']['agents_state'][step['agent']]
+                # add the current product skill progress to be able to retrieve only that if necessary
+                step['state']['curr_product_skills'] = step['state']['products_state'][np.argmax(step['state']['curr_agent_state'])]
 
     # compute a mask for each agent based on the observability grade (number of consequent neighbours to have observability on)
     def compute_agents_state_mask(self, observability_grade):

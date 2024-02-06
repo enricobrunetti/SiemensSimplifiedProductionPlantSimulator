@@ -2,7 +2,7 @@ import json
 from utils.trajectories_management import TrajectoryManager
 
 INPUT_DIR = 'output/export_trajectories6'
-OUTPUT_DIR = 'output/export_trajectories8_POSTPROCESSED.json'
+OUTPUT_DIR = 'output/export_trajectories9_POSTPROCESSED.json'
 CONFIG_PATH = "config/config.json"
 
 with open(CONFIG_PATH) as config_file:
@@ -14,7 +14,9 @@ tm.compute_reward()
 tm.remove_production_skill_trajectories()
 tm.remove_action_masks()
 # manage observability grade in the config
-tm.set_states_observability()
+tm.extract_agent_state_and_product_skills_for_DISTQ()
+# for LPI mantain max observability, so we can extract k and beta neighbourhood for each step
+#tm.set_states_observability()
 #tm.extract_agent_trajectories()
 tm.save_trajectory()
 

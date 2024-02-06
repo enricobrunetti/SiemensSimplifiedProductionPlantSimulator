@@ -2,8 +2,34 @@ import numpy as np
 
 # given a state return an observation which consists of the product that the current agent has
 # and of the current skill progress of that specific product
-def get_agent_state_and_product_skill_observation(state):
+def get_agent_state_and_product_skill_observation_DISTQ(state):
     return f'{state["curr_agent_state"]}, {state["curr_product_skills"]}'
+
+def get_combined_observation_for_LPI(state, neighbourhood):
+    combined_observation = {}
+    for i in range(len(state['agents_state'])):
+        if i in neighbourhood:
+            combined_observation[i] = {}
+            combined_observation[i]['agent_state'] = state['agents_state'][i]
+            if all(elem == 0 for elem in combined_observation[i]['agent_state']):
+                combined_observation[i]['product_state'] = None
+            else:
+                combined_observation[i]['product_state'] = state['products_state'][np.argmax(combined_observation[i]['agent_state'])]
+    return str(combined_observation)
+
+# TO-DO: function description
+def get_policy_improvement_observation_for_LPI(state, agent, action, actions):
+    observation = []
+    states = state['agents_state']
+    actions = []
+    for i in range(len(states)):
+        if i == agent:
+            actions.append(action)
+        else:
+            actions.append(actions[-1])
+    observation.append(states)
+    observation.append(actions)
+    return observation
 
 # Queste due funzioni sono relative alla vecchia implementazione, vedere se rimuoverle
 def get_agents_informations(config, learning_agents, n_current_agent, observability_grade, state, action):
