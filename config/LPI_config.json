@@ -1,5 +1,6 @@
 {
     "algorithm": "LPI",
+    "actions_policy": "eps-greedy",
     "n_agents": 9,
     "n_products": 5,
     "available_actions": [6, 7, 8, 9, 10],

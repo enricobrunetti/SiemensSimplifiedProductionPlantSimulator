@@ -5,7 +5,24 @@ import numpy as np
 def get_agent_state_and_product_skill_observation_DISTQ(state):
     return f'{state["curr_agent_state"]}, {state["curr_product_skills"]}'
 
-def get_combined_observation_for_LPI(state, neighbourhood):
+def get_combined_observation_for_LPI(state, neighbourhood, defer):
+    combined_observation = []
+    combined_action = []
+    for i in range(len(state['agents_state'])):
+        if i in neighbourhood:
+            single_obs = []
+            single_obs.append(state['agents_state'][i])
+            if all(elem == 0 for elem in single_obs[0]):
+                single_obs.append(None)
+            else:
+                single_obs.append(state['products_state'][np.argmax(single_obs[0])])
+            combined_observation.append(single_obs)
+    for i in range(len(neighbourhood) - 1):
+        combined_action.append(defer)
+        
+    return tuple([tuple(combined_observation), tuple(combined_action)])
+
+def get_combined_observation_for_LPI2(state, neighbourhood):
     combined_observation = {}
     for i in range(len(state['agents_state'])):
         if i in neighbourhood:

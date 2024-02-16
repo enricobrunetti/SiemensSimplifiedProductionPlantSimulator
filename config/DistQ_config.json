@@ -1,0 +1,12 @@
+{
+    "algorithm": "DistQ",
+    "actions_policy": "softmax",
+    "exploration_prob": 0,
+    "n_agents": 9,
+    "n_products": 5,
+    "available_actions": [6, 7, 8, 9, 10],
+    "alpha": 0.7,
+    "gamma": 0.9,
+    "eta": 0.001,
+    "tau": 0
+}
