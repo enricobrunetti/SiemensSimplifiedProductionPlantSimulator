@@ -8,13 +8,13 @@ class TrajectoryManager():
         self.config = config
         self.n_agents = self.config['n_agents']
         self.n_products = self.config['n_products']
-        self.n_runs = self.config['n_runs']
+        self.n_episodes = self.config['n_episodes']
         self.agents_connections = {int(k): v for k, v in self.config['agents_connections'].items()} 
         self.trajectories = {}
         self.time_ordered_trajectories = {}
 
         # load the trajectories
-        for i in range(self.n_runs):
+        for i in range(self.n_episodes):
             with open(f'{self.INPUT_DIR}_{i}.json', 'r') as infile:
                 new_run_trajectory = json.load(infile)
                 self.trajectories.update(new_run_trajectory)
@@ -40,19 +40,20 @@ class TrajectoryManager():
     # transport/defer action and the followirng one)
     # CAUTION: perform this before converting global trajectory into agents trajectories
     def compute_step_reward(self, n_steps = 1):
-        for episode in self.trajectories:
-            for i in range(len(self.trajectories[episode]) - 1):
-                reward = self.trajectories[episode][i]['reward']
+        for episode_product in self.trajectories:
+            for i in range(len(self.trajectories[episode_product]) - 1):
+                reward = self.trajectories[episode_product][i]['reward']
                 j = i + 1
                 steps = 0
-                while j < len(self.trajectories[episode]) and steps < n_steps:
-                    if self.trajectories[episode][j]['action'] >= self.config['n_production_skills']:
+                while j < len(self.trajectories[episode_product]) and steps < n_steps:
+                    if self.trajectories[episode_product][j]['action'] >= self.config['n_production_skills']:
                         steps += 1
                     if steps < n_steps:
-                        reward += self.trajectories[episode][j]['reward']
+                        reward += self.trajectories[episode_product][j]['reward']
                         j += 1
-                self.trajectories[episode][i]['reward'] = reward
+                self.trajectories[episode_product][i]['reward'] = reward
 
+    # TO-DO: the definition of episode is changed. Check if the structure should be modified
     # give the cumulative reward of all the actions performed until the agent take again the product (if the agent
     # don't take again the product use the comulative reward until the end of the episode)
     # CAUTION: perform this before converting global trajectory into agents trajectories
@@ -83,45 +84,27 @@ class TrajectoryManager():
                         agents_seen_products[agent][j] = 0
                 self.time_ordered_trajectories[key][i]['reward'] = -1 * agents_seen_products[agent].count(1)
 
-        episode_number = 0
-        run_number = -1
-        for episode in self.trajectories:
-            if episode_number % self.n_products == 0:
-                run_number += 1
-            episode_number += 1
+        episode__product_number = 0
+        episode_number = -1
+        for episode_product in self.trajectories:
+            if episode__product_number % self.n_products == 0:
+                episode_number += 1
+            episode__product_number += 1
 
-            for i in range(len(self.trajectories[episode])):
-                self.trajectories[episode][i]['reward'] = next(item for item in self.time_ordered_trajectories[run_number] if item['time'] == self.trajectories[episode][i]['time'])['reward']
-
-
-
-    def compute_negative_reward2(self):
-        episode_number = 0
-        for episode in self.trajectories:
-            if episode_number % self.n_products == 0:
-                agents_seen_products = [[0 for i in range(self.n_products)] for j in range(self.n_agents)]
-            episode_number += 1
-            for i in range(len(self.trajectories[episode])):
-                agent = self.trajectories[episode][i]['agent']
-                if 1 in self.trajectories[episode][i]['state']['agents_state'][agent]:
-                    product = self.trajectories[episode][i]['state']['agents_state'][agent].index(1)
-                    agents_seen_products[agent][product] = 1
-                for j in range(self.n_products):
-                    if all(elem == 0 for elem in np.array(self.trajectories[episode][i]['state']['products_state'][j]).flatten()):
-                        agents_seen_products[agent][j] = 0
-                self.trajectories[episode][i]['reward'] = -1 * agents_seen_products[agent].count(1)
+            for i in range(len(self.trajectories[episode_product])):
+                self.trajectories[episode_product][i]['reward'] = next(item for item in self.time_ordered_trajectories[episode_number] if item['time'] == self.trajectories[episode_product][i]['time'])['reward']
 
     # remove from trajectories all the skills
     # CAUTION: perform this before converting global trajectory into agents trajectories
     def remove_production_skill_trajectories(self):
-        for episode in self.trajectories:
-            self.trajectories[episode] = [step for step in self.trajectories[episode] if step['action'] >= self.config['n_production_skills']]
+        for episode_product in self.trajectories:
+            self.trajectories[episode_product] = [step for step in self.trajectories[episode_product] if step['action'] >= self.config['n_production_skills']]
 
     # remove from state all the action masks but save the ones of the current agent concerning transport and defer actions
     # CAUTION: perform this before converting global trajectory into agents trajectories
     def remove_action_masks(self):
-        for episode in self.trajectories:
-            for step in self.trajectories[episode]:
+        for episode_product in self.trajectories:
+            for step in self.trajectories[episode_product]:
                 step['action_mask'] = step['state']['action_mask'][f'{step["agent"]}'][6:11]
                 del step['state']['action_mask']
 
@@ -130,8 +113,8 @@ class TrajectoryManager():
     def set_states_observability(self):
         observability_grade = self.config['observability_grade']
         agents_state_mask = self.compute_agents_state_mask(observability_grade)
-        for episode in self.trajectories:
-            for step in self.trajectories[episode]:
+        for episode_product in self.trajectories:
+            for step in self.trajectories[episode_product]:
                 step['state']['agents_state'] = [lst for lst, mask in zip(step['state']['agents_state'], agents_state_mask[step['agent']]) if any(x != 0 for x in mask)]
                 products_mask = np.zeros(self.n_products)
                 for agent_state in step['state']['agents_state']:
@@ -143,8 +126,8 @@ class TrajectoryManager():
 
     # extract state of current agent and product skills of his product for DISTQ algorithm
     def extract_agent_state_and_product_skills_for_DISTQ(self):
-        for episode in self.trajectories:
-            for step in self.trajectories[episode]:
+        for episode_product in self.trajectories:
+            for step in self.trajectories[episode_product]:
                 # add the current agent state to be able to retrieve only that if necessary
                 step['state']['curr_agent_state'] = step['state']['agents_state'][step['agent']]
                 # add the current product skill progress to be able to retrieve only that if necessary
@@ -206,23 +189,23 @@ def split_data_global(INPUT_DIR):
     sa = []
     m = []
     agents = []
-    for episode in trajectories:
-        for i in range(len(trajectories[episode])):
-            t.append(trajectories[episode][i]['time'])
+    for episode_product in trajectories:
+        for i in range(len(trajectories[episode_product])):
+            t.append(trajectories[episode_product][i]['time'])
             # TO-DO: check what is better
             #s.append(flatten_dict_values(trajectories[episode][i]['state']))
-            s.append(trajectories[episode][i]['state'])
-            a.append(trajectories[episode][i]['action'])
-            r.append(trajectories[episode][i]['reward'])
+            s.append(trajectories[episode_product][i]['state'])
+            a.append(trajectories[episode_product][i]['action'])
+            r.append(trajectories[episode_product][i]['reward'])
             # TO-DO: fix absorbing, for now it works only for the last agent that sees each product
             # but should work for the last time that each agent see that product
-            absorbing.append(1 if i == (len(trajectories[episode]) - 1) else 0)
+            absorbing.append(1 if i == (len(trajectories[episode_product]) - 1) else 0)
             # TO-DO: check if you have to change depending on what decided for s
-            temp_sa = flatten_dict_values(trajectories[episode][i]['state'])
-            temp_sa.append(trajectories[episode][i]['action'])
+            temp_sa = flatten_dict_values(trajectories[episode_product][i]['state'])
+            temp_sa.append(trajectories[episode_product][i]['action'])
             sa.append(temp_sa)
-            m.append(trajectories[episode][i]['action_mask'])
-            agents.append(trajectories[episode][i]['agent'])
+            m.append(trajectories[episode_product][i]['action_mask'])
+            agents.append(trajectories[episode_product][i]['agent'])
 
     # TO-DO: fix s_prime
     s_prime = s[1:]
@@ -244,17 +227,17 @@ def split_data_single_agent(INPUT_DIR, agent):
     absorbing = []
     sa = []
     m = []
-    for episode in trajectory:
-        for i in range(len(trajectory[episode])):
-            t.append(trajectory[episode][i]['time'])
-            s.append(flatten_dict_values(trajectory[episode][i]['state']))
-            a.append(trajectory[episode][i]['action'])
-            r.append(trajectory[episode][i]['reward'])
-            absorbing.append(1 if i == (len(trajectory[episode]) - 1) else 0)
-            temp_sa = flatten_dict_values(trajectory[episode][i]['state'])
-            temp_sa.append(trajectory[episode][i]['action'])
+    for episode_product in trajectory:
+        for i in range(len(trajectory[episode_product])):
+            t.append(trajectory[episode_product][i]['time'])
+            s.append(flatten_dict_values(trajectory[episode_product][i]['state']))
+            a.append(trajectory[episode_product][i]['action'])
+            r.append(trajectory[episode_product][i]['reward'])
+            absorbing.append(1 if i == (len(trajectory[episode_product]) - 1) else 0)
+            temp_sa = flatten_dict_values(trajectory[episode_product][i]['state'])
+            temp_sa.append(trajectory[episode_product][i]['action'])
             sa.append(temp_sa)
-            m.append(trajectory[episode][i]['action_mask'])
+            m.append(trajectory[episode_product][i]['action_mask'])
 
     # TO-DO: fix s_prime
     s_prime = s[1:]

@@ -3,36 +3,36 @@ import numpy as np
 import copy
 from production_plant_environment.env.production_plant_environment_v0 import ProductionPlantEnvironment
 
-CONFIG_PATH = "config/config.json"
-OUTPUT_PATH = "output/output6"
-TRAJECTORY_PATH = "output/export_trajectories6"
+CONFIG_PATH = "config/simulator_config.json"
+OUTPUT_PATH = "output/output7"
+TRAJECTORY_PATH = "output/export_trajectories7"
 
 with open(CONFIG_PATH) as config_file:
     config = json.load(config_file)
 
 n_products = config['n_products']
-n_runs = config['n_runs']
+n_episodes = config['n_episodes']
 num_max_steps = config['num_max_steps']
 nothing_action = config['n_production_skills'] + 5
 
 env = ProductionPlantEnvironment(config)
 
-for run in range(n_runs):
+for episode in range(n_episodes):
     # create log
-    with open(f"{OUTPUT_PATH}_{run}.txt", 'w') as file:
+    with open(f"{OUTPUT_PATH}_{episode}.txt", 'w') as file:
         file.write('')
 
     # create trajectory
-    trajectories = {f'Episode {episode}': [] for episode in range(n_products * run, n_products * run + n_products)}
-    with open(f"{TRAJECTORY_PATH}_{run}.json", 'w') as outfile:
+    trajectories = {f'Episode {episode}, Product {product}': [] for product in range(n_products)}
+    with open(f"{TRAJECTORY_PATH}_{episode}.json", 'w') as outfile:
         json.dump(trajectories, outfile, indent=6)
 
     state = env.reset()
     old_state = copy.deepcopy(state)
 
     for step in range(num_max_steps):
-        with open(f"{OUTPUT_PATH}_{run}.txt", 'a') as file:
-            file.write(f"***************Run{run}***************\n")
+        with open(f"{OUTPUT_PATH}_{episode}.txt", 'a') as file:
+            file.write(f"***************Episode{episode}***************\n")
             file.write(f"***************Step{step}***************\n")
             file.write(f"Time: {state['time']}, Current agent: {state['current_agent']}\n")
             file.write(f"Agents busy: {state['agents_busy']}\n")
@@ -50,12 +50,12 @@ for run in range(n_runs):
 
         state, reward, done, _ = env.step(action)
 
-        with open(f"{OUTPUT_PATH}_{run}.txt", 'a') as file:
+        with open(f"{OUTPUT_PATH}_{episode}.txt", 'a') as file:
             file.write(f"Step: {step}, Action: {action}, Reward: {reward}, Done: {done}\n\n")
 
         # update trajectory
         if action != nothing_action:
-            with open(f"{TRAJECTORY_PATH}_{run}.json", 'r') as infile:
+            with open(f"{TRAJECTORY_PATH}_{episode}.json", 'r') as infile:
                 trajectories = json.load(infile)
             
             state_to_save = copy.deepcopy(old_state)
@@ -64,13 +64,13 @@ for run in range(n_runs):
             state_to_save = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in state_to_save.items()}
             trajectory_update = {'time': int(old_state['time']), 'agent': int(old_state['current_agent']), 'state': state_to_save, 'action': int(action), 'reward': int(reward)}
             current_product = np.argmax(state['agents_state'][old_state['current_agent']]) if action == 0 else np.argmax(old_state['agents_state'][old_state['current_agent']])
-            trajectories[f"Episode {current_product + n_products * run}"].append(trajectory_update)
+            trajectories[f"Episode {episode}, Product {current_product}"].append(trajectory_update)
             
-            with open(f"{TRAJECTORY_PATH}_{run}.json", 'w') as outfile:
+            with open(f"{TRAJECTORY_PATH}_{episode}.json", 'w') as outfile:
                 json.dump(trajectories, outfile, indent=6)
         
         old_state = copy.deepcopy(state)
 
         if done:
-            print(f"The run {run+1}/{n_runs} is finished.")
+            print(f"The episode {episode+1}/{n_episodes} is finished.")
             break
