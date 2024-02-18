@@ -11,7 +11,7 @@ class ProductionPlantEnvironment():
         self.n_agents = self.config['n_agents']
         self.n_products = self.config['n_products']
         self.n_production_skills = self.config['n_production_skills']
-        self.action_space = self.config['actions']
+        self.actions = self.config['actions']
         self.action_time = self.config['action_time']
         self.action_energy = self.config['action_energy']
         self.alpha = self.config['alpha']
@@ -20,7 +20,7 @@ class ProductionPlantEnvironment():
 
         # initially mask all actions for all agents
         for i in range(self.n_agents):
-            self.action_mask[i] = np.zeros(len(self.action_space))
+            self.action_mask[i] = np.zeros(len(self.actions))
 
         self.agents_connections = {int(k): v for k, v in self.config['agents_connections'].items()}
         self.agents_skills = {int(k): v for k, v in self.config['agents_skills'].items()}
@@ -40,7 +40,7 @@ class ProductionPlantEnvironment():
         self.n_completed_products = 0
         self.current_step = 0
 
-        self.action_mask[self.current_agent] = [0 for i in range(len(self.action_space))]
+        self.action_mask[self.current_agent] = [0 for i in range(len(self.actions))]
         self.action_mask[self.current_agent][0] = 1
 
         # agents state
@@ -62,7 +62,7 @@ class ProductionPlantEnvironment():
             # then doesn't allow anymore that action
             waiting_products = list(self.waiting_products)
             if not waiting_products:
-                self.action_mask[self.supply_agent] = np.zeros(len(self.action_space))
+                self.action_mask[self.supply_agent] = np.zeros(len(self.actions))
             else :
                 next_product = random.choice(waiting_products)
                 waiting_products.remove(next_product)
@@ -96,7 +96,7 @@ class ProductionPlantEnvironment():
         self.update_trasnfer_mask()
         
         # increase time for every action in which we don't have an empty agent doing nothing
-        if (not (action == self.action_space[-1] and self.agents_busy[self.current_agent][0] == 0)):
+        if (not (action == self.actions[-1] and self.agents_busy[self.current_agent][0] == 0)):
             self.time += 1
 
         # return as reward the execution time of the action
@@ -154,7 +154,7 @@ class ProductionPlantEnvironment():
         # if the agent has no product mask all actions as zeroes unless it is the supply agent 
         # (in that case mask the take a new element action as 1)
         else:
-            mask = np.zeros(len(self.action_space))
+            mask = np.zeros(len(self.actions))
             if agent == self.supply_agent and self.waiting_products.size > 0:
                 mask[0] = 1
         return mask

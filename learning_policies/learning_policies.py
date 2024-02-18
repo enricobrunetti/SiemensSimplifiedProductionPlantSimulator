@@ -62,7 +62,7 @@ class DistributedQLearningAgent:
         self.eta = config['eta']
         self.tau = config['tau']
         
-        self.default_q_value = -self.n_products / (1 - self.gamma)
+        self.default_q_value = np.round(-self.n_products / (1 - self.gamma), 3)
         self.values = {}
         self.policy = {}
 
@@ -85,13 +85,13 @@ class DistributedQLearningAgent:
         current_q_value = self.values[observation]['Q'][action]
         next_q_value = (1 - lr) * current_q_value + lr * (reward + self.gamma * agents_information)
 
-        self.values[observation]['Q'][action] = next_q_value
+        self.values[observation]['Q'][action] = np.round(next_q_value, 3)
         self.values[observation]['T'][action] += 1
 
     def policy_improvement(self):
         for state in self.policy.keys():
             curr_value = self.policy[state]
-            print(curr_value)
+            #print(curr_value)
             #print(self.values[state])
             new_value = [np.round(((curr_value[i] ** (1 - self.eta * self.tau)) / np.sum(curr_value)) * np.exp(self.eta * self.values[state]['Q'][i]), 3) for i in range(len(curr_value))]
             self.policy[state] = new_value
@@ -107,7 +107,7 @@ class DistributedQLearningAgent:
             else:
                 if observation not in self.values.keys():
                     print('new observation, random action selection')
-                    return self.get_random_action()
+                    return self.get_random_action(allowed_actions)
                 
                 q_values = [self.values[observation]['Q'][a] for a in decreased_actions]
                 print(f'actions: {allowed_actions}, q_values: {q_values}')
@@ -116,7 +116,7 @@ class DistributedQLearningAgent:
         elif self.actions_policy == 'softmax':
             if observation not in self.policy.keys():
                 print('new observation, random action selection')
-                return self.get_random_action()
+                return self.get_random_action(allowed_actions)
             
             # IMPORTANTE: stiamo calcolando la probabilità riferita alle sole azioni consentite
             policy_values = [self.policy[observation][a] for a in decreased_actions]

@@ -1,4 +1,5 @@
 {
+    "algorithm": "DistQ",
     "n_agents": 9,
     "n_products": 5,
     "n_episodes": 10,

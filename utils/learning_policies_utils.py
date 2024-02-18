@@ -1,9 +1,36 @@
+from learning_policies.learning_policies import DistributedQLearningAgent
 import numpy as np
+import json
+
+DIST_Q_CONFIG_PATH = "config/DistQ_config.json"
+
+# given number of agents and algorithm return a list of istances of agents of that specific algorithm
+def initialize_agents(n_agents, algorithm):
+    if algorithm == "DistQ":
+        with open(DIST_Q_CONFIG_PATH) as config_file:
+            config = json.load(config_file)
+
+        return [DistributedQLearningAgent(config) for _ in range(n_agents)]
 
 # given a state return an observation which consists of the product that the current agent has
-# and of the current skill progress of that specific product
-def get_agent_state_and_product_skill_observation_DISTQ(state):
+# and of the current skill progress of that specific product (FOR ONLINE TRAINING ONLY)
+def get_agent_state_and_product_skill_observation_DISTQ_online(agent, state):
+    curr_agent_state = state['agents_state'][agent]
+    curr_product_skills = state['products_state'][np.argmax(curr_agent_state)]
+    return f'{curr_agent_state}, {curr_product_skills}'
+
+# given a state return an observation which consists of the product that the current agent has
+# and of the current skill progress of that specific product (FOR OFFLINE TRAINING ONLY)
+def get_agent_state_and_product_skill_observation_DISTQ_offline(state):
     return f'{state["curr_agent_state"]}, {state["curr_product_skills"]}'
+
+# given an agent_number return the number of the next agent (after transport/defer action)
+def get_next_agent_number(config, current_agent, action):
+    agents_connections = {int(k): v for k, v in config['agents_connections'].items()}
+    action -= config['n_production_skills']
+    if action == 4:
+        return current_agent
+    return agents_connections[current_agent][action]
 
 def get_combined_observation_for_LPI(state, neighbourhood, defer):
     combined_observation = []

@@ -1,19 +1,26 @@
+from production_plant_environment.env.production_plant_environment_v0 import ProductionPlantEnvironment
+from utils.learning_policies_utils import initialize_agents, get_agent_state_and_product_skill_observation_DISTQ_online, get_next_agent_number
 import json
 import numpy as np
 import copy
-from production_plant_environment.env.production_plant_environment_v0 import ProductionPlantEnvironment
 
 CONFIG_PATH = "config/simulator_config.json"
-OUTPUT_PATH = "output/output7"
-TRAJECTORY_PATH = "output/export_trajectories7"
+OUTPUT_PATH = "output/outputDistQTest"
+TRAJECTORY_PATH = "output/export_trajectories_distq_test"
 
 with open(CONFIG_PATH) as config_file:
     config = json.load(config_file)
 
+n_agents = config['n_agents']
 n_products = config['n_products']
 n_episodes = config['n_episodes']
 num_max_steps = config['num_max_steps']
-nothing_action = config['n_production_skills'] + 5
+n_production_skills = config['n_production_skills']
+nothing_action = n_production_skills + 5
+algorithm = config['algorithm']
+
+if algorithm != 'random':
+    learning_agents = initialize_agents(n_agents, algorithm)
 
 env = ProductionPlantEnvironment(config)
 
@@ -40,15 +47,41 @@ for episode in range(n_episodes):
             file.write(f"Products state: \n{state['products_state']}\n")
             file.write(f"Action mask: \n{state['action_mask']}\n")
 
+        action_selected_by_algorithm = False
+
         if np.all(state['action_mask'][state['current_agent']] == 0) or state['agents_busy'][state['current_agent']][0] == 1:
             # if no actions available -> do nothing
             action = nothing_action
         else:
-            actions = np.array(env.action_space)
+            actions = np.array(env.actions)
             actions = actions[np.array(state['action_mask'][state['current_agent']]) == 1]
-            action = np.random.choice(actions)
+            # if only production actions are available randomly select one of them
+            if np.max(actions) < n_production_skills:
+                action = np.random.choice(actions)
+            # otherwise select the proper transfer action with the selected algorithm
+            else:
+                action_selected_by_algorithm = True
+                if algorithm == 'random':
+                    action = np.random.choice(actions)
+                elif algorithm == 'DistQ':
+                    agent = learning_agents[state['current_agent']]
+                    obs = get_agent_state_and_product_skill_observation_DISTQ_online(state['current_agent'], state)
+                    mask = state['action_mask'][state['current_agent']][n_production_skills:-1]
+                    action = agent.select_action(obs, mask)
 
         state, reward, done, _ = env.step(action)
+
+        if action_selected_by_algorithm:
+            if algorithm == 'DistQ':
+                agent_num = old_state['current_agent']
+                agent = learning_agents[agent_num]
+                next_agent_num = get_next_agent_number(config, agent_num, action)
+                next_agent = learning_agents[next_agent_num]
+
+                agents_informations = next_agent.get_max_value(get_agent_state_and_product_skill_observation_DISTQ_online(next_agent_num, state))
+                obs = get_agent_state_and_product_skill_observation_DISTQ_online(agent_num, old_state)
+                agent.update_values(obs, action, reward, agents_informations)
+                agent.policy_improvement()
 
         with open(f"{OUTPUT_PATH}_{episode}.txt", 'a') as file:
             file.write(f"Step: {step}, Action: {action}, Reward: {reward}, Done: {done}\n\n")
