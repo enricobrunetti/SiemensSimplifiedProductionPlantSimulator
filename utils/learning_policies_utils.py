@@ -1,16 +1,26 @@
-from learning_policies.learning_policies import DistributedQLearningAgent
+from learning_policies.learning_policies import AgentsManager, DistributedQLearningAgent, LPIAgent
 import numpy as np
 import json
 
 DIST_Q_CONFIG_PATH = "config/DistQ_config.json"
+LPI_CONFIG_PATH = "config/LPI_config.json"
 
 # given number of agents and algorithm return a list of istances of agents of that specific algorithm
 def initialize_agents(n_agents, algorithm):
     if algorithm == "DistQ":
         with open(DIST_Q_CONFIG_PATH) as config_file:
             config = json.load(config_file)
+        return [DistributedQLearningAgent(config) for _ in range(n_agents)], config['policy_improvement']
+    elif algorithm == "LPI":
+        with open(LPI_CONFIG_PATH) as config_file:
+            config = json.load(config_file)
+        agents_manager = AgentsManager(config)
+        agents_LPI = [LPIAgent(config, agents_manager, i) for i in range(n_agents)]
 
-        return [DistributedQLearningAgent(config) for _ in range(n_agents)]
+        for agent in agents_LPI:
+            agents_manager.register_agent(agent)
+        return agents_LPI, config['policy_improvement']
+    
 
 # given a state return an observation which consists of the product that the current agent has
 # and of the current skill progress of that specific product (FOR ONLINE TRAINING ONLY)

@@ -20,7 +20,10 @@ nothing_action = n_production_skills + 5
 algorithm = config['algorithm']
 
 if algorithm != 'random':
-    learning_agents = initialize_agents(n_agents, algorithm)
+    learning_agents, policy_improvement = initialize_agents(n_agents, algorithm)
+
+if algorithm == 'LPI':
+    observations_history_LPI = {}
 
 env = ProductionPlantEnvironment(config)
 
@@ -55,9 +58,9 @@ for episode in range(n_episodes):
         else:
             actions = np.array(env.actions)
             actions = actions[np.array(state['action_mask'][state['current_agent']]) == 1]
-            # if only production actions are available randomly select one of them
+            # if only production actions are available there will be only one element
             if np.max(actions) < n_production_skills:
-                action = np.random.choice(actions)
+                action = actions[0]
             # otherwise select the proper transfer action with the selected algorithm
             else:
                 action_selected_by_algorithm = True
@@ -68,20 +71,46 @@ for episode in range(n_episodes):
                     obs = get_agent_state_and_product_skill_observation_DISTQ_online(state['current_agent'], state)
                     mask = state['action_mask'][state['current_agent']][n_production_skills:-1]
                     action = agent.select_action(obs, mask)
+                elif algorithm == 'LPI':
+                    agent = learning_agents[state['current_agent']]
+                    obs = agent.generate_observation(state)
+                    mask = state['action_mask'][state['current_agent']][n_production_skills:-1]
+                    action = agent.select_action(obs, mask)
+
 
         state, reward, done, _ = env.step(action)
 
         if action_selected_by_algorithm:
+            agent_num = old_state['current_agent']
+            agent = learning_agents[agent_num]
             if algorithm == 'DistQ':
-                agent_num = old_state['current_agent']
-                agent = learning_agents[agent_num]
                 next_agent_num = get_next_agent_number(config, agent_num, action)
                 next_agent = learning_agents[next_agent_num]
 
                 agents_informations = next_agent.get_max_value(get_agent_state_and_product_skill_observation_DISTQ_online(next_agent_num, state))
                 obs = get_agent_state_and_product_skill_observation_DISTQ_online(agent_num, old_state)
                 agent.update_values(obs, action, reward, agents_informations)
+            elif algorithm == 'LPI':
+                if agent_num not in observations_history_LPI.keys():
+                    observations_history_LPI[agent_num] = {}
+                    observations_history_LPI[agent_num]['O'] = []
+                    observations_history_LPI[agent_num]['A'] = []
+                    observations_history_LPI[agent_num]['R'] = []
+
+                observations_history_LPI[agent_num]['O'].append(agent.generate_observation(old_state))
+                observations_history_LPI[agent_num]['A'].append(action)
+                observations_history_LPI[agent_num]['R'].append(reward)
+
+                if len(observations_history_LPI[agent_num]['O']) > 1:
+                    agent.update_values(observations_history_LPI[agent_num]['O'][-2], \
+                                        observations_history_LPI[agent_num]['A'][-2], \
+                                        observations_history_LPI[agent_num]['R'][-2], \
+                                        observations_history_LPI[agent_num]['O'][-1], \
+                                        observations_history_LPI[agent_num]['A'][-1])
+            
+            if policy_improvement == 'step':
                 agent.policy_improvement()
+                
 
         with open(f"{OUTPUT_PATH}_{episode}.txt", 'a') as file:
             file.write(f"Step: {step}, Action: {action}, Reward: {reward}, Done: {done}\n\n")
@@ -107,3 +136,7 @@ for episode in range(n_episodes):
         if done:
             print(f"The episode {episode+1}/{n_episodes} is finished.")
             break
+    
+    if policy_improvement == 'episode':
+        for agent in learning_agents:
+            agent.policy_improvement()

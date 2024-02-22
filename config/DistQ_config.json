@@ -2,6 +2,7 @@
     "algorithm": "DistQ",
     "actions_policy": "eps-greedy",
     "exploration_prob": 0.5,
+    "policy_improvement": "step",
     "n_agents": 9,
     "n_products": 5,
     "available_actions": [6, 7, 8, 9, 10],
