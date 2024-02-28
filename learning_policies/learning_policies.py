@@ -1,74 +1,83 @@
 import numpy as np
+import json
+import os
 
-# TO-DO: check if it is better to move this class somewhere else
-class AgentsManager():
-    def __init__(self, config):
-        self.config = config
-        self.agents = {}
-        self.agents_connections = {int(k): v for k, v in config['agents_connections'].items()}
+class LearningAgent:
+    def __init__(self, config, agent_num):
+        self.algorithm = config['algorithm']
+        self.agent_num = agent_num
         self.actions = config['available_actions']
-    
-    def register_agent(self, agent):
-        self.agents[agent.agent_num] = agent
-
-    def get_values(self, agent_num, observation):
-        values = self.agents[agent_num].values
-        if observation not in values.keys():
-            return None
-        return values[observation]['Q']
-    
-    def get_max_value(self, agent_num, observation):
-        values = self.agents[agent_num].values
-        if observation not in values.keys():
-            return None
-        return np.max(values[observation]['Q'])
-    
-    def get_n_hop_neighbours(self, agent_num, n_hop):
-        neighbour = set()
-        for i in range(n_hop):
-            if i == 0:
-                neighbour = set(elem for elem in self.agents_connections[agent_num] if elem != None)
-            else:
-                for elem in neighbour:
-                    new_neighbours = set(new_elem for new_elem in self.agents_connections[elem] if new_elem != None)
-                    neighbour = neighbour.union(new_neighbours)
-        
-        if agent_num not in neighbour:
-            neighbour.add(agent_num)
-
-        return list(neighbour)
-    
-    # CHECK if necessary
-    def get_default_observation(self, number_of_agents):
-        null_observation = []
-        null_observation.append([None]) # agent state
-        null_observation.append([None]) # production skills for the product that the agent has
-
-        null_observation = [tuple(null_observation) for _ in range (number_of_agents)]
-        null_action = [self.actions[-1] for _ in range(number_of_agents - 1)]
-        return tuple([tuple(null_observation), tuple(null_action)])
-
-# TO-DO: father class of DistributedQLearningAgent and LPIAgent with common methods (like auto-update lr) and methods
-# to load and save models.
-
-# TO-DO: implement auto-update learning rate
-class DistributedQLearningAgent:
-    def __init__(self, config):
-        self.actions = config['available_actions']
-        self.actions_space = len(self.actions)
+        self.actions_space = len(config['available_actions'])
         self.n_products = config['n_products']
+        self.agents_connections = {int(k): v for k, v in config['agents_connections'].items()}
 
         self.alpha = config['alpha']
         self.gamma = config['gamma']
         self.eta = config['eta']
         self.tau = config['tau']
         
-        self.default_q_value = np.round(-self.n_products / (1 - self.gamma), 3)
+        self.default_q_value = np.round(-self.n_products/(1 - self.gamma), 3)
+
         self.values = {}
         self.policy = {}
 
+        self.p_max = config['p_max']
+
         self.actions_policy = config['actions_policy']
         self.exploration_prob = config['exploration_prob']
+
+    def select_action(self, observation, mask):
+        allowed_actions = [action for action, mask in zip(self.actions, mask) if mask != 0]
+        rescaled_non_production_actions = [action - self.actions[0] for action in allowed_actions]
+        
+        if self.actions_policy == 'eps-greedy':
+            if np.random.rand() < self.exploration_prob:
+                print('random action choosen')
+                return self.get_random_action(allowed_actions)
+            else:
+                if observation not in self.values.keys():
+                    print('new observation, random action selection')
+                    return self.get_random_action(allowed_actions)
+                
+                q_values = [self.values[observation]['Q'][a] for a in rescaled_non_production_actions]
+                print(f'actions: {allowed_actions}, q_values: {q_values}')
+                return allowed_actions[np.argmax(q_values)]
+            
+        elif self.actions_policy == 'softmax':
+            if observation not in self.policy.keys():
+                print('new observation, random action selection')
+                return self.get_random_action(allowed_actions)
+            
+            # IMPORTANT: we are computing probability referred only to allowed actions
+            policy_values = [self.policy[observation][a] for a in rescaled_non_production_actions]
+            prob_values = policy_values / np.sum(policy_values)
+            print(f'actions: {allowed_actions}, prob_values: {prob_values}')
+            return np.random.choice(allowed_actions, p=prob_values)
+    
+    def save(self, n_episodes):
+        model_name = f'models/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{n_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}'
+        model_agent_path = f'{model_name}/{self.agent_num}.json'
+        
+        directory = os.path.dirname(model_agent_path)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        values_and_policy = {'Values': self.values, 'Policy': self.policy}
+        with open(model_agent_path, 'w') as outfile:
+            json.dump(values_and_policy, outfile, indent=6)
+        
+        return model_name
+
+    def load(self, model_name):
+        model_dir = f'models/{self.algorithm}/{model_name}.json'
+        with open(model_dir, 'r') as infile:
+            trajectories = json.load(infile)
+        self.values = trajectories['Values']
+        self.policy = trajectories['Policy']
+
+class DistributedQLearningAgent(LearningAgent):
+    def __init__(self, config, agent_num):
+        super().__init__(config, agent_num)
 
     def update_values(self, observation, action, reward, agents_information):
         action = action - self.actions[0]
@@ -89,42 +98,21 @@ class DistributedQLearningAgent:
         self.values[observation]['Q'][action] = np.round(next_q_value, 3)
         self.values[observation]['T'][action] += 1
 
-    def policy_improvement(self):
-        for state in self.policy.keys():
-            curr_value = self.policy[state]
-            #print(curr_value)
-            #print(self.values[state])
-            new_value = [np.round(((curr_value[i] ** (1 - self.eta * self.tau)) / np.sum(curr_value)) * np.exp(self.eta * self.values[state]['Q'][i]), 3) for i in range(len(curr_value))]
-            self.policy[state] = new_value
+    def soft_policy_improvement(self):
+        lr_policy = self.eta
+        for _ in range(self.p_max):
+            for state in self.policy.keys():
+                curr_value = self.policy[state]
+                #print(curr_value)
+                #print(self.values[state])
+                new_value = [np.round(((curr_value[i] ** (1 - lr_policy * self.tau)) / np.sum(curr_value)) * np.exp(lr_policy * self.values[state]['Q'][i]), 3) for i in range(len(curr_value))]
+                self.policy[state] = new_value
 
-    # TO-DO: if remains the same for both algorithms move in father class
-    def select_action(self, observation, mask):
-        allowed_actions = [action for action, mask in zip(self.actions, mask) if mask != 0]
-        decreased_actions = [action - self.actions[0] for action in allowed_actions]
-        
-        if self.actions_policy == 'eps-greedy':
-            if np.random.rand() < self.exploration_prob:
-                print('random action choosen')
-                return self.get_random_action(allowed_actions)
-            else:
-                if observation not in self.values.keys():
-                    print('new observation, random action selection')
-                    return self.get_random_action(allowed_actions)
-                
-                q_values = [self.values[observation]['Q'][a] for a in decreased_actions]
-                print(f'actions: {allowed_actions}, q_values: {q_values}')
-                return allowed_actions[np.argmax(q_values)]
-            
-        elif self.actions_policy == 'softmax':
-            if observation not in self.policy.keys():
-                print('new observation, random action selection')
-                return self.get_random_action(allowed_actions)
-            
-            # IMPORTANT: we are computing probability referred only to allowed actions
-            policy_values = [self.policy[observation][a] for a in decreased_actions]
-            prob_values = policy_values / np.sum(policy_values)
-            print(f'actions: {allowed_actions}, prob_values: {prob_values}')
-            return np.random.choice(allowed_actions, p=prob_values)
+    def get_next_agent_number(self, action):
+        action -= self.actions[0]
+        if action == 4:
+            return self.agent_num
+        return self.agents_connections[self.agent_num][action]    
 
     def get_random_action(self, allowed_actions):
         return np.random.choice(allowed_actions)
@@ -134,35 +122,30 @@ class DistributedQLearningAgent:
             return self.default_q_value
         return np.max(self.values[observation]['Q'])
 
-# TO-DO: implement auto-update learning rate
-class LPIAgent:
-    def __init__(self, config, agents_manager, agent_num):
-        self.agents_manager = agents_manager
-        self.agent_num = agent_num
-        self.actions = config['available_actions']
-        self.defer = self.actions[-1]
-        self.actions_space = len(config['available_actions'])
-        self.actions_policy = config['actions_policy']
+class LPIAgent(LearningAgent):
+    def __init__(self, config, agent_num):
+        super().__init__(config, agent_num)
 
-        self.alpha = config['alpha']
-        self.gamma = config['gamma']
         self.beta = config['beta']
         self.kappa = config['kappa']
-        self.eta = config['eta']
-        self.tau = config['tau']
-        self.rho = config['rho']
+
+        self.neighbours_kappa = self.get_n_hop_neighbours(self.kappa)
+        self.neighbours_beta = self.get_n_hop_neighbours(self.beta)
+
+    def get_n_hop_neighbours(self, n_hop):
+        neighbour = set()
+        for i in range(n_hop):
+            if i == 0:
+                neighbour = set(elem for elem in self.agents_connections[self.agent_num] if elem != None)
+            else:
+                for elem in neighbour:
+                    new_neighbours = set(new_elem for new_elem in self.agents_connections[elem] if new_elem != None)
+                    neighbour = neighbour.union(new_neighbours)
         
-        self.n_products = config['n_products']
-        self.default_q_value = np.round(-self.n_products/(1 - self.gamma), 3)
+        if self.agent_num not in neighbour:
+            neighbour.add(self.agent_num)
 
-        self.values = {}
-        self.policy = {}
-
-        self.actions_policy = config['actions_policy']
-        self.exploration_prob = config['exploration_prob']
-
-        self.neighbours_kappa = self.agents_manager.get_n_hop_neighbours(self.agent_num, self.kappa)
-        self.neighbours_beta = self.agents_manager.get_n_hop_neighbours(self.agent_num, self.beta)
+        return list(neighbour)
 
     # IMPORTANT: obs_prime and a_prime contains the observation of the same agent in his next turn and the action
     # that he will choose in that turn (so not next state in general but next state in which the agent has
@@ -191,12 +174,13 @@ class LPIAgent:
         self.values[observation]['Q'][action] = np.round(next_value, 3)
         self.values[observation]['T'][action] += 1
 
-    def policy_improvement(self):
-        for state in self.policy.keys():
-            curr_value = self.policy[state]
-            new_value = [np.round(((curr_value[i] ** (1 - self.eta * self.tau)) / np.sum(curr_value)) * np.exp(self.eta * self.values[state]['Q'][i]), 3) for i in range(len(curr_value))]
-            self.policy[state] = new_value
-            #print(f'curr_value: {curr_value}, new_value: {new_value}')
+    def soft_policy_improvement(self):
+        lr_policy = self.eta
+        for _ in range(self.p_max):
+            for state in self.policy.keys():
+                curr_value = self.policy[state]
+                new_value = [np.round(((curr_value[i] ** (1 - lr_policy * self.tau)) / np.sum(curr_value)) * np.exp(lr_policy * self.values[state]['Q'][i]), 3) for i in range(len(curr_value))]
+                self.policy[state] = new_value
 
     def generate_observation(self, state):
 
@@ -212,35 +196,6 @@ class LPIAgent:
                 combined_observation.append(single_obs)
 
         return str(combined_observation)
-    
-    # TO-DO: if remains the same for both algorithms move in father class
-    def select_action(self, observation, mask):
-        allowed_actions = [action for action, mask in zip(self.actions, mask) if mask != 0]
-        decreased_actions = [action - self.actions[0] for action in allowed_actions]
-        
-        if self.actions_policy == 'eps-greedy':
-            if np.random.rand() < self.exploration_prob:
-                print('random action choosen')
-                return self.get_random_action(allowed_actions)
-            else:
-                if observation not in self.values.keys():
-                    print('new observation, random action selection')
-                    return self.get_random_action(allowed_actions)
-                
-                q_values = [self.values[observation]['Q'][a] for a in decreased_actions]
-                print(f'actions: {allowed_actions}, q_values: {q_values}')
-                return allowed_actions[np.argmax(q_values)]
-            
-        elif self.actions_policy == 'softmax':
-            if observation not in self.policy.keys():
-                print('new observation, random action selection')
-                return self.get_random_action(allowed_actions)
-            
-            # IMPORTANT: we are computing probability referred only to allowed actions
-            policy_values = [self.policy[observation][a] for a in decreased_actions]
-            prob_values = policy_values / np.sum(policy_values)
-            print(f'actions: {allowed_actions}, prob_values: {prob_values}')
-            return np.random.choice(allowed_actions, p=prob_values)
         
     def get_random_action(self, allowed_actions):
         return np.random.choice(allowed_actions)
@@ -249,4 +204,18 @@ class LPIAgent:
         if observation not in self.values.keys():
             return [self.default_q_value] * self.actions_space
         return self.values[observation]['Q']
+    
+    def save(self, n_episodes):
+        model_name = f'models/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{n_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}_{self.beta}_{self.kappa}'
+        model_agent_path = f'{model_name}/{self.agent_num}.json'
+        
+        directory = os.path.dirname(model_agent_path)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        values_and_policy = {'Values': self.values, 'Policy': self.policy}
+        with open(model_agent_path, 'w') as outfile:
+            json.dump(values_and_policy, outfile, indent=6)
+        
+        return model_name
     
