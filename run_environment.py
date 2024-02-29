@@ -8,7 +8,6 @@ import copy
 CONFIG_PATH = "config/simulator_config.json"
 OUTPUT_PATH = "output/outputDistQTest"
 TRAJECTORY_PATH = "output/export_trajectories_distq_test"
-LOG_PATH = "output/run_log_LPI_softmax"
 
 with open(CONFIG_PATH) as config_file:
     config = json.load(config_file)
@@ -21,13 +20,11 @@ n_production_skills = config['n_production_skills']
 nothing_action = n_production_skills + 5
 algorithm = config['algorithm']
 export_trajectories = config['export_trajectories']
+output_log = config['output_log']
 custom_reward = config['custom_reward']
 
-with open(f"{LOG_PATH}.txt", 'w') as file:
-    file.write(f"")
-
 if algorithm != 'random':
-    learning_agents, policy_improvement = initialize_agents(n_agents, algorithm)
+    learning_agents, policy_improvement = initialize_agents(n_agents, algorithm, n_episodes)
 
 if algorithm == 'LPI':
     observations_history_LPI = {}
@@ -37,10 +34,19 @@ reward_visualizer = RewardVisualizer(n_agents)
 
 performance = {}
 
+# create and get model path
+for agent in learning_agents:
+    agent.save()
+model_path = learning_agents[0].get_model_name()
+
+with open(f"{model_path}/training_logs.txt", 'w') as file:
+    file.write(f"")
+
 for episode in range(n_episodes):
-    # create log
-    with open(f"{OUTPUT_PATH}_{episode}.txt", 'w') as file:
-        file.write('')
+    if output_log:
+        # create log
+        with open(f"{OUTPUT_PATH}_{episode}.txt", 'w') as file:
+            file.write('')
 
     if export_trajectories:
         # create trajectory
@@ -48,7 +54,8 @@ for episode in range(n_episodes):
         with open(f"{TRAJECTORY_PATH}_{episode}.json", 'w') as outfile:
             json.dump(trajectories, outfile, indent=6)
 
-    with open(f"{LOG_PATH}.txt", 'a') as file:
+
+    with open(f"{model_path}/training_logs.txt", 'a') as file:
         file.write(f"Starting episode {episode+1}\n")
 
     agents_rewards = [[] for _ in range(n_agents)]
@@ -59,14 +66,15 @@ for episode in range(n_episodes):
     old_state = copy.deepcopy(state)
 
     for step in range(num_max_steps):
-        with open(f"{OUTPUT_PATH}_{episode}.txt", 'a') as file:
-            file.write(f"***************Episode{episode}***************\n")
-            file.write(f"***************Step{step}***************\n")
-            file.write(f"Time: {state['time']}, Current agent: {state['current_agent']}\n")
-            file.write(f"Agents busy: {state['agents_busy']}\n")
-            file.write(f"Agents state: \n{state['agents_state']}\n")
-            file.write(f"Products state: \n{state['products_state']}\n")
-            file.write(f"Action mask: \n{state['action_mask']}\n")
+        if output_log:
+            with open(f"{OUTPUT_PATH}_{episode}.txt", 'a') as file:
+                file.write(f"***************Episode{episode}***************\n")
+                file.write(f"***************Step{step}***************\n")
+                file.write(f"Time: {state['time']}, Current agent: {state['current_agent']}\n")
+                file.write(f"Agents busy: {state['agents_busy']}\n")
+                file.write(f"Agents state: \n{state['agents_state']}\n")
+                file.write(f"Products state: \n{state['products_state']}\n")
+                file.write(f"Action mask: \n{state['action_mask']}\n")
 
         action_selected_by_algorithm = False
 
@@ -80,7 +88,7 @@ for episode in range(n_episodes):
             if np.max(actions) < n_production_skills:
                 action = actions[0]
 
-                with open(f"{LOG_PATH}.txt", 'a') as file:
+                with open(f"{model_path}/training_logs.txt", 'a') as file:
                     if old_state['current_agent'] == 0:
                         file.write(f"New product picked up by agent {old_state['current_agent']}\n")
                     else:
@@ -151,7 +159,7 @@ for episode in range(n_episodes):
             if policy_improvement == 'step':
                 agent.soft_policy_improvement()
             
-            with open(f"{LOG_PATH}.txt", 'a') as file:
+            with open(f"{model_path}/training_logs.txt", 'a') as file:
                 source_agent = old_state['current_agent']
                 product = np.argmax(old_state['agents_state'][old_state['current_agent']])
                 for i, sublist in enumerate(state['agents_state']):
@@ -160,9 +168,9 @@ for episode in range(n_episodes):
                         break
                 file.write(f"Agent {source_agent} transfer product {product} to agent {dest_agent} (action: {action})\n")
                 
-
-        with open(f"{OUTPUT_PATH}_{episode}.txt", 'a') as file:
-            file.write(f"Step: {step}, Action: {action}, Reward: {reward}, Done: {done}\n\n")
+        if output_log:
+            with open(f"{OUTPUT_PATH}_{episode}.txt", 'a') as file:
+                file.write(f"Step: {step}, Action: {action}, Reward: {reward}, Done: {done}\n\n")
 
         if export_trajectories:
             # update trajectory
@@ -191,7 +199,7 @@ for episode in range(n_episodes):
         for agent in learning_agents:
             agent.soft_policy_improvement()
 
-    with open(f"{LOG_PATH}.txt", 'a') as file:
+    with open(f"{model_path}/training_logs.txt", 'a') as file:
         file.write(f"Episode {episode+1} ended\n")
 
     performance[episode] = {}
@@ -204,11 +212,11 @@ for episode in range(n_episodes):
         performance[episode][i] = {}
         performance[episode][i]['mean_reward'] = mean_reward
 
+reward_visualizer.save_plot(f"{model_path}/reward_graph.png")
 reward_visualizer.show_plot()
 
 for agent in learning_agents:
-    # TO-DO: check if it is possible to pass model_path only one time (since it's the same for all agents)
-    model_path = agent.save(n_episodes)
+    agent.save()
 
 with open(f"{model_path}/training_performance.txt", 'w') as file:
     for i in range(n_episodes):

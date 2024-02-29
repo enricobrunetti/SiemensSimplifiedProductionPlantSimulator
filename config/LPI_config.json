@@ -1,6 +1,6 @@
 {
     "algorithm": "LPI",
-    "actions_policy": "softmax",
+    "actions_policy": "eps-greedy",
     "exploration_prob": 0.5,
     "policy_improvement": "episode",
     "p_max": 10,
@@ -17,7 +17,7 @@
                            "7": [4, 8, null, 6],
                            "8": [5, null, null, 7]},
     "alpha": 0.01,
-    "gamma": 0.9,
+    "gamma": 0.99,
     "beta": 1,
     "kappa": 1,
     "eta": 0.001,

@@ -1,6 +1,7 @@
 {
-    "algorithm": "DistQ",
+    "algorithm": "LPI",
     "export_trajectories": false,
+    "output_log": false,
     "n_agents": 9,
     "n_products": 5,
     "n_episodes": 10,

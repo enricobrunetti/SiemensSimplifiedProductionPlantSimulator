@@ -6,15 +6,15 @@ DIST_Q_CONFIG_PATH = "config/DistQ_config.json"
 LPI_CONFIG_PATH = "config/LPI_config.json"
 
 # given number of agents and algorithm return a list of istances of agents of that specific algorithm
-def initialize_agents(n_agents, algorithm):
+def initialize_agents(n_agents, algorithm, n_episodes):
     if algorithm == "DistQ":
         with open(DIST_Q_CONFIG_PATH) as config_file:
             config = json.load(config_file)
-        return [DistributedQLearningAgent(config, i) for i in range(n_agents)], config['policy_improvement']
+        return [DistributedQLearningAgent(config, i, n_episodes) for i in range(n_agents)], config['policy_improvement']
     elif algorithm == "LPI":
         with open(LPI_CONFIG_PATH) as config_file:
             config = json.load(config_file)
-        return [LPIAgent(config, i) for i in range(n_agents)], config['policy_improvement']
+        return [LPIAgent(config, i, n_episodes) for i in range(n_agents)], config['policy_improvement']
     
 # TO-DO: check if move these following 2 functions in DistributedQLearningAgent class
 

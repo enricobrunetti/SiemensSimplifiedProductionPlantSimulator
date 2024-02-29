@@ -25,3 +25,6 @@ class RewardVisualizer:
 
     def show_plot(self):
         plt.show()
+
+    def save_plot(self, filename):
+        plt.savefig(filename)

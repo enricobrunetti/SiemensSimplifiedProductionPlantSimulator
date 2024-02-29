@@ -3,9 +3,10 @@ import json
 import os
 
 class LearningAgent:
-    def __init__(self, config, agent_num):
+    def __init__(self, config, agent_num, n_training_episodes):
         self.algorithm = config['algorithm']
         self.agent_num = agent_num
+        self.n_training_episodes = n_training_episodes
         self.actions = config['available_actions']
         self.actions_space = len(config['available_actions'])
         self.n_products = config['n_products']
@@ -25,6 +26,9 @@ class LearningAgent:
 
         self.actions_policy = config['actions_policy']
         self.exploration_prob = config['exploration_prob']
+
+        self.model_name = f'models/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}'
+
 
     def select_action(self, observation, mask):
         allowed_actions = [action for action, mask in zip(self.actions, mask) if mask != 0]
@@ -54,9 +58,8 @@ class LearningAgent:
             print(f'actions: {allowed_actions}, prob_values: {prob_values}')
             return np.random.choice(allowed_actions, p=prob_values)
     
-    def save(self, n_episodes):
-        model_name = f'models/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{n_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}'
-        model_agent_path = f'{model_name}/{self.agent_num}.json'
+    def save(self):
+        model_agent_path = f'{self.model_name}/{self.agent_num}.json'
         
         directory = os.path.dirname(model_agent_path)
         if not os.path.exists(directory):
@@ -66,8 +69,6 @@ class LearningAgent:
         with open(model_agent_path, 'w') as outfile:
             json.dump(values_and_policy, outfile, indent=6)
         
-        return model_name
-
     def load(self, model_name):
         model_dir = f'models/{self.algorithm}/{model_name}.json'
         with open(model_dir, 'r') as infile:
@@ -75,9 +76,12 @@ class LearningAgent:
         self.values = trajectories['Values']
         self.policy = trajectories['Policy']
 
+    def get_model_name(self):
+        return self.model_name
+
 class DistributedQLearningAgent(LearningAgent):
-    def __init__(self, config, agent_num):
-        super().__init__(config, agent_num)
+    def __init__(self, config, agent_num, n_training_episodes):
+        super().__init__(config, agent_num, n_training_episodes)
 
     def update_values(self, observation, action, reward, agents_information):
         action = action - self.actions[0]
@@ -123,14 +127,16 @@ class DistributedQLearningAgent(LearningAgent):
         return np.max(self.values[observation]['Q'])
 
 class LPIAgent(LearningAgent):
-    def __init__(self, config, agent_num):
-        super().__init__(config, agent_num)
+    def __init__(self, config, agent_num, n_training_episodes):
+        super().__init__(config, agent_num, n_training_episodes)
 
         self.beta = config['beta']
         self.kappa = config['kappa']
 
         self.neighbours_kappa = self.get_n_hop_neighbours(self.kappa)
         self.neighbours_beta = self.get_n_hop_neighbours(self.beta)
+
+        self.model_name = f'models/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}_{self.beta}_{self.kappa}'
 
     def get_n_hop_neighbours(self, n_hop):
         neighbour = set()
@@ -205,9 +211,8 @@ class LPIAgent(LearningAgent):
             return [self.default_q_value] * self.actions_space
         return self.values[observation]['Q']
     
-    def save(self, n_episodes):
-        model_name = f'models/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{n_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}_{self.beta}_{self.kappa}'
-        model_agent_path = f'{model_name}/{self.agent_num}.json'
+    def save(self):
+        model_agent_path = f'{self.model_name}/{self.agent_num}.json'
         
         directory = os.path.dirname(model_agent_path)
         if not os.path.exists(directory):
@@ -216,6 +221,7 @@ class LPIAgent(LearningAgent):
         values_and_policy = {'Values': self.values, 'Policy': self.policy}
         with open(model_agent_path, 'w') as outfile:
             json.dump(values_and_policy, outfile, indent=6)
-        
-        return model_name
+
+    def get_model_name(self):
+        return self.model_name
     
