@@ -12,6 +12,9 @@ TRAJECTORY_PATH = "output/export_trajectories_distq_test"
 with open(CONFIG_PATH) as config_file:
     config = json.load(config_file)
 
+test_model = config['test_model']
+test_model_name = config['test_model_name']
+test_model_n_episodes = config['test_model_n_episodes']
 n_agents = config['n_agents']
 n_products = config['n_products']
 n_episodes = config['n_episodes']
@@ -24,7 +27,7 @@ output_log = config['output_log']
 custom_reward = config['custom_reward']
 
 if algorithm != 'random':
-    learning_agents, policy_improvement = initialize_agents(n_agents, algorithm, n_episodes)
+    learning_agents, update_values, policy_improvement = initialize_agents(n_agents, algorithm, n_episodes, custom_reward)
 
 if algorithm == 'LPI':
     observations_history_LPI = {}
@@ -34,14 +37,25 @@ reward_visualizer = RewardVisualizer(n_agents)
 
 performance = {}
 
-# create and get model path
-for agent in learning_agents:
-    agent.save()
+if test_model:
+    # if we are testing load existing model
+    for i in range(len(learning_agents)):
+        learning_agents[i].load(f'{test_model_name}/{i}')
+else:
+    # otherwise create model path
+    for agent in learning_agents:
+        agent.save()
 model_path = learning_agents[0].get_model_name()
 
-with open(f"{model_path}/training_logs.txt", 'w') as file:
+if test_model:
+    file_log_name = f"{model_path}/test_logs.txt"
+else:
+    file_log_name = f"{model_path}/training_logs.txt"
+with open(file_log_name, 'w') as file:
     file.write(f"")
 
+if test_model:
+    n_episodes = test_model_n_episodes
 for episode in range(n_episodes):
     if output_log:
         # create log
@@ -54,12 +68,11 @@ for episode in range(n_episodes):
         with open(f"{TRAJECTORY_PATH}_{episode}.json", 'w') as outfile:
             json.dump(trajectories, outfile, indent=6)
 
-
-    with open(f"{model_path}/training_logs.txt", 'a') as file:
+    with open(file_log_name, 'a') as file:
         file.write(f"Starting episode {episode+1}\n")
 
     agents_rewards = [[] for _ in range(n_agents)]
-    if custom_reward == 'negative':
+    if custom_reward == 'reward1':
         agents_seen_products = [[0 for i in range(n_products)] for j in range(n_agents)]
 
     state = env.reset()
@@ -88,7 +101,7 @@ for episode in range(n_episodes):
             if np.max(actions) < n_production_skills:
                 action = actions[0]
 
-                with open(f"{model_path}/training_logs.txt", 'a') as file:
+                with open(file_log_name, 'a') as file:
                     if old_state['current_agent'] == 0:
                         file.write(f"New product picked up by agent {old_state['current_agent']}\n")
                     else:
@@ -117,7 +130,7 @@ for episode in range(n_episodes):
         if action_selected_by_algorithm:
             agent_num = old_state['current_agent']
 
-            if custom_reward == 'negative':
+            if custom_reward == 'reward1':
                 if 1 in old_state['agents_state'][agent_num]:
                         product = np.where(old_state['agents_state'][agent_num] == 1)[0][0]
                         agents_seen_products[agent_num][product] = 1
@@ -131,14 +144,17 @@ for episode in range(n_episodes):
             agents_rewards[agent_num].append(reward)
 
             agent = learning_agents[agent_num]
-            if algorithm == 'DistQ':
+            if not test_model and algorithm == 'DistQ':
                 next_agent_num = agent.get_next_agent_number(action)
                 next_agent = learning_agents[next_agent_num]
 
                 agents_informations = next_agent.get_max_value(get_agent_state_and_product_skill_observation_DISTQ_online(next_agent_num, state))
                 obs = get_agent_state_and_product_skill_observation_DISTQ_online(agent_num, old_state)
                 agent.update_values(obs, action, reward, agents_informations)
-            elif algorithm == 'LPI':
+                if update_values == 'step':
+                    agent.apply_values_update()
+
+            elif not test_model and algorithm == 'LPI':
                 if agent_num not in observations_history_LPI.keys():
                     observations_history_LPI[agent_num] = {}
                     observations_history_LPI[agent_num]['O'] = []
@@ -155,11 +171,13 @@ for episode in range(n_episodes):
                                         observations_history_LPI[agent_num]['R'][-2], \
                                         observations_history_LPI[agent_num]['O'][-1], \
                                         observations_history_LPI[agent_num]['A'][-1])
+                    if update_values == 'step':
+                        agent.apply_values_update()
             
-            if policy_improvement == 'step':
+            if not test_model and policy_improvement == 'step':
                 agent.soft_policy_improvement()
             
-            with open(f"{model_path}/training_logs.txt", 'a') as file:
+            with open(file_log_name, 'a') as file:
                 source_agent = old_state['current_agent']
                 product = np.argmax(old_state['agents_state'][old_state['current_agent']])
                 for i, sublist in enumerate(state['agents_state']):
@@ -194,12 +212,16 @@ for episode in range(n_episodes):
         if done:
             print(f"The episode {episode+1}/{n_episodes} is finished.")
             break
+
+    if not test_model and update_values == 'episode':
+        for agent in learning_agents:
+            agent.apply_values_update()
     
-    if policy_improvement == 'episode':
+    if not test_model and policy_improvement == 'episode':
         for agent in learning_agents:
             agent.soft_policy_improvement()
 
-    with open(f"{model_path}/training_logs.txt", 'a') as file:
+    with open(file_log_name, 'a') as file:
         file.write(f"Episode {episode+1} ended\n")
 
     performance[episode] = {}
@@ -212,13 +234,28 @@ for episode in range(n_episodes):
         performance[episode][i] = {}
         performance[episode][i]['mean_reward'] = mean_reward
 
-reward_visualizer.save_plot(f"{model_path}/reward_graph.png")
+if test_model:
+    plot_path = f"{model_path}/test_reward_graph.png"
+else:
+    plot_path = f"{model_path}/training_reward_graph.png"
+reward_visualizer.save_plot(plot_path)
 reward_visualizer.show_plot()
 
-for agent in learning_agents:
-    agent.save()
+if not test_model:
+    for agent in learning_agents:
+        agent.save()
 
-with open(f"{model_path}/training_performance.txt", 'w') as file:
+if test_model:
+    performance_log_name = f"{model_path}/test_performance.txt"
+else:
+    performance_log_name = f"{model_path}/training_performance.txt"
+
+with open(performance_log_name, 'w') as file:
+    if test_model:
+        file.write(f"Avg time to complete: {np.average([performance[i]['episode_duration'] for i in range(n_episodes)])}\n")
+        for j in range(n_agents):
+            file.write(f"Agent {j} mean reward: {np.average([performance[i][j]['mean_reward'] for i in range(n_episodes)])}\n")
+        file.write(f"\n")
     for i in range(n_episodes):
         file.write(f"****Episode {i+1}****\n")
         file.write(f"Mean reward:\n")

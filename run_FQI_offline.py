@@ -8,6 +8,7 @@ from trlib.algorithms.reinforcement.fqi import FQI
 from sklearn.ensemble import ExtraTreesRegressor
 
 INPUT_DIR = "output/export_trajectories6_POSTPROCESSED.json"
+CONFIG_PATH = "config/FQI_config.json"
 
 # TO-DO: move this inside environment class
 class MDP():
@@ -18,41 +19,47 @@ class MDP():
         self.gamma = 0.99
 
 if __name__ == '__main__':
+    with open(CONFIG_PATH) as config_file:
+        config = json.load(config_file)
 
     mdp = MDP()
 
-    actions = [6, 7, 8, 9, 10]
+    n_agents = config['n_agents']
+    actions = config['available_actions']
 
-    regressor_params = {'n_estimators': 100,
-                        'min_samples_split': 10}
+    regressor_params = config['regressor_params']
     
-    max_iterations = 1
-    batch_size = 1
-    n_runs = 20
-    n_jobs = 10
-    seed = None
-    fit_params = {}
+    max_iterations = config['max_iterations']
+    batch_size = config['batch_size']
+    n_runs = config['n_runs']
+    n_jobs = config['n_jobs']
+    seed = config['seed']
+    fit_params = config['fit_params']
 
     # FQI
     # TO-DO: before FQI fix absorbing (see trajectories_management)
-    pi = EpsilonGreedy(actions, ZeroQ(), 0)
+    pi = []
+    agents = []
+    for i in range(n_agents):
 
-    algorithm = FQI(mdp, pi, verbose = True, actions = actions,
-                    batch_size = batch_size, max_iterations = max_iterations,
-                    regressor_type = ExtraTreesRegressor, **regressor_params)
-    if seed is not None:
-        np.random.seed(seed)
-    else:
-        np.random.seed()
+        pi[i] = EpsilonGreedy(actions, ZeroQ(), 0)
 
-    algorithm.reset()
-    _, _, _, r, s_prime, absorbing, sa, _ = split_data_single_agent(INPUT_DIR, 0)
+        agents[i] = FQI(mdp, pi[i], verbose = True, actions = actions,
+                        batch_size = batch_size, max_iterations = max_iterations,
+                        regressor_type = ExtraTreesRegressor, **regressor_params)
+        if seed is not None:
+            np.random.seed(seed)
+        else:
+            np.random.seed()
 
-    for _ in range(max_iterations):
-        algorithm._iter(sa, r, s_prime, absorbing, **fit_params)
+        agents[i].reset()
+        _, _, _, r, s_prime, absorbing, sa, _ = split_data_single_agent(INPUT_DIR, i)
+
+        for _ in range(max_iterations):
+            agents[i]._iter(sa, r, s_prime, absorbing, **fit_params)
 
     example_state = sa[10][:-1]
     print(f'example_state: {example_state}')
-    chosen_action = algorithm._policy.sample_action(example_state)
+    chosen_action = agents[0]._policy.sample_action(example_state)
     print('action {} has been chosen for state {}'.format(chosen_action, example_state))
 

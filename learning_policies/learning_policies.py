@@ -3,10 +3,11 @@ import json
 import os
 
 class LearningAgent:
-    def __init__(self, config, agent_num, n_training_episodes):
+    def __init__(self, config, agent_num, n_training_episodes, reward_type):
         self.algorithm = config['algorithm']
         self.agent_num = agent_num
         self.n_training_episodes = n_training_episodes
+        self.reward_type = reward_type
         self.actions = config['available_actions']
         self.actions_space = len(config['available_actions'])
         self.n_products = config['n_products']
@@ -22,13 +23,19 @@ class LearningAgent:
         self.values = {}
         self.policy = {}
 
+        # used to allow to keep track of updates and transfer to actual values
+        # only once an episode is finished 
+        self.values_updated = {}
+
         self.p_max = config['p_max']
 
         self.actions_policy = config['actions_policy']
         self.exploration_prob = config['exploration_prob']
 
-        self.model_name = f'models/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}'
+        self.model_name = f'models/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}'
 
+    def apply_values_update(self):
+        self.values = self.values_updated
 
     def select_action(self, observation, mask):
         allowed_actions = [action for action, mask in zip(self.actions, mask) if mask != 0]
@@ -70,7 +77,7 @@ class LearningAgent:
             json.dump(values_and_policy, outfile, indent=6)
         
     def load(self, model_name):
-        model_dir = f'models/{self.algorithm}/{model_name}.json'
+        model_dir = f'{model_name}.json'
         with open(model_dir, 'r') as infile:
             trajectories = json.load(infile)
         self.values = trajectories['Values']
@@ -80,38 +87,40 @@ class LearningAgent:
         return self.model_name
 
 class DistributedQLearningAgent(LearningAgent):
-    def __init__(self, config, agent_num, n_training_episodes):
-        super().__init__(config, agent_num, n_training_episodes)
+    def __init__(self, config, agent_num, n_training_episodes, reward_type):
+        super().__init__(config, agent_num, n_training_episodes, reward_type)
 
     def update_values(self, observation, action, reward, agents_information):
         action = action - self.actions[0]
     
-        if observation not in self.values.keys():
-            self.values[observation] = {}
-            self.values[observation]['Q'] = [self.default_q_value] * self.actions_space
-            self.values[observation]['T'] = [0] * self.actions_space
+        if observation not in self.values_updated.keys():
+            self.values_updated[observation] = {}
+            self.values_updated[observation]['Q'] = [self.default_q_value] * self.actions_space
+            self.values_updated[observation]['T'] = [0] * self.actions_space
 
             # in that case the observation must be added also in the policy
-            self.policy[observation] = 1/self.actions_space * np.ones(self.actions_space)
+            if self.actions_policy == 'softmax':
+                self.policy[observation] = 1/self.actions_space * np.ones(self.actions_space)
 
         lr = self.alpha
 
-        current_q_value = self.values[observation]['Q'][action]
+        current_q_value = self.values_updated[observation]['Q'][action]
         next_q_value = (1 - lr) * current_q_value + lr * (reward + self.gamma * agents_information)
 
-        self.values[observation]['Q'][action] = np.round(next_q_value, 3)
-        self.values[observation]['T'][action] += 1
+        self.values_updated[observation]['Q'][action] = np.round(next_q_value, 3)
+        self.values_updated[observation]['T'][action] += 1
 
     def soft_policy_improvement(self):
-        lr_policy = self.eta
-        for _ in range(self.p_max):
-            for state in self.policy.keys():
-                curr_value = self.policy[state]
-                #print(curr_value)
-                #print(self.values[state])
-                new_value = [np.round(((curr_value[i] ** (1 - lr_policy * self.tau)) / np.sum(curr_value)) * np.exp(lr_policy * self.values[state]['Q'][i]), 3) for i in range(len(curr_value))]
-                self.policy[state] = new_value
-
+        # otherwise policy improvement not needed
+        if self.actions_policy == 'softmax':
+            lr_policy = self.eta
+            for _ in range(self.p_max):
+                for state in self.policy.keys():
+                    curr_value = self.policy[state]
+                    sum_curr_value = np.sum(curr_value)
+                    new_value = (curr_value ** (1 - lr_policy * self.tau) / sum_curr_value) * np.exp(lr_policy * np.array(self.values[state]['Q']))
+                    self.policy[state] = np.round(new_value, 3)
+            
     def get_next_agent_number(self, action):
         action -= self.actions[0]
         if action == 4:
@@ -127,8 +136,8 @@ class DistributedQLearningAgent(LearningAgent):
         return np.max(self.values[observation]['Q'])
 
 class LPIAgent(LearningAgent):
-    def __init__(self, config, agent_num, n_training_episodes):
-        super().__init__(config, agent_num, n_training_episodes)
+    def __init__(self, config, agent_num, n_training_episodes, reward_type):
+        super().__init__(config, agent_num, n_training_episodes, reward_type)
 
         self.beta = config['beta']
         self.kappa = config['kappa']
@@ -136,7 +145,7 @@ class LPIAgent(LearningAgent):
         self.neighbours_kappa = self.get_n_hop_neighbours(self.kappa)
         self.neighbours_beta = self.get_n_hop_neighbours(self.beta)
 
-        self.model_name = f'models/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}_{self.beta}_{self.kappa}'
+        self.model_name = f'models/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}_{self.beta}_{self.kappa}'
 
     def get_n_hop_neighbours(self, n_hop):
         neighbour = set()
@@ -162,31 +171,35 @@ class LPIAgent(LearningAgent):
         action = action - self.actions[0]
         a_prime = a_prime - self.actions[0]
 
-        if observation not in self.values.keys():
-            self.values[observation] = {}
-            self.values[observation]['Q'] = [self.default_q_value] * self.actions_space
-            self.values[observation]['T'] = [0] * self.actions_space
+        if observation not in self.values_updated.keys():
+            self.values_updated[observation] = {}
+            self.values_updated[observation]['Q'] = [self.default_q_value] * self.actions_space
+            self.values_updated[observation]['T'] = [0] * self.actions_space
 
             # in that case the observation must be added also in the policy
-            self.policy[observation] = 1/self.actions_space * np.ones(self.actions_space)
+            if self.actions_policy == 'softmax':
+                self.policy[observation] = 1/self.actions_space * np.ones(self.actions_space)
 
-        curr_value = self.values[observation]['Q'][action]
+        curr_value = self.values_updated[observation]['Q'][action]
         # agents_information=q_value dell'azione (a_prime) che l'agente stesso (lui stesso non il successivo) giocherebbe 
         #nello stato s_prime (prossimo stato in cui l'agente ha un prodotto)
         agents_information = self.get_values(obs_prime)[a_prime]
 
         next_value = (1 - lr) * curr_value + lr * (reward + self.gamma * agents_information)
 
-        self.values[observation]['Q'][action] = np.round(next_value, 3)
-        self.values[observation]['T'][action] += 1
+        self.values_updated[observation]['Q'][action] = np.round(next_value, 3)
+        self.values_updated[observation]['T'][action] += 1
 
     def soft_policy_improvement(self):
-        lr_policy = self.eta
-        for _ in range(self.p_max):
-            for state in self.policy.keys():
-                curr_value = self.policy[state]
-                new_value = [np.round(((curr_value[i] ** (1 - lr_policy * self.tau)) / np.sum(curr_value)) * np.exp(lr_policy * self.values[state]['Q'][i]), 3) for i in range(len(curr_value))]
-                self.policy[state] = new_value
+        # otherwise policy improvement not needed
+        if self.actions_policy == 'softmax':
+            lr_policy = self.eta
+            for _ in range(self.p_max):
+                for state in self.policy.keys():
+                    curr_value = self.policy[state]
+                    sum_curr_value = np.sum(curr_value)
+                    new_value = (curr_value ** (1 - lr_policy * self.tau) / sum_curr_value) * np.exp(lr_policy * np.array(self.values[state]['Q']))
+                    self.policy[state] = np.round(new_value, 3)
 
     def generate_observation(self, state):
 

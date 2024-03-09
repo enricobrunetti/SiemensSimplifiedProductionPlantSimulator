@@ -1,5 +1,13 @@
 {
     "algorithm": "FQI",
     "n_agents": 9,
-    "available_actions": [6, 7, 8, 9, 10]
+    "available_actions": [6, 7, 8, 9, 10],
+    "regressor_params": {"n_estimators": 100,
+                        "min_samples_split": 10},
+    "max_iteration": 1,
+    "batch_size": 1,
+    "n_runs": 20,
+    "n_jobs": 10,
+    "seed": null,
+    "fit_params": {}
 }
