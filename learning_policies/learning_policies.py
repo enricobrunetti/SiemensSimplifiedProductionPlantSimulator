@@ -85,6 +85,9 @@ class LearningAgent:
 
     def get_model_name(self):
         return self.model_name
+    
+    def get_gamma(self):
+        return self.gamma
 
 class DistributedQLearningAgent(LearningAgent):
     def __init__(self, config, agent_num, n_training_episodes, reward_type):

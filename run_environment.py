@@ -6,7 +6,7 @@ import numpy as np
 import copy
 
 CONFIG_PATH = "config/simulator_config.json"
-OUTPUT_PATH = "output/outputDistQTest"
+OUTPUT_PATH = "output/outputDistQTestReward3"
 TRAJECTORY_PATH = "output/export_trajectories_distq_test"
 
 with open(CONFIG_PATH) as config_file:
@@ -25,6 +25,7 @@ algorithm = config['algorithm']
 export_trajectories = config['export_trajectories']
 output_log = config['output_log']
 custom_reward = config['custom_reward']
+supply_action = config['supply_action']
 
 if algorithm != 'random':
     learning_agents, update_values, policy_improvement = initialize_agents(n_agents, algorithm, n_episodes, custom_reward)
@@ -72,8 +73,10 @@ for episode in range(n_episodes):
         file.write(f"Starting episode {episode+1}\n")
 
     agents_rewards = [[] for _ in range(n_agents)]
-    if custom_reward == 'reward1':
-        agents_seen_products = [[0 for i in range(n_products)] for j in range(n_agents)]
+    if custom_reward == 'reward1' or custom_reward == 'reward2':
+        agents_seen_products = [[0 for _ in range(n_products)] for _ in range(n_agents)]
+    elif custom_reward == 'reward3':
+        n_supplied_products = 0
 
     state = env.reset()
     old_state = copy.deepcopy(state)
@@ -127,19 +130,31 @@ for episode in range(n_episodes):
 
         state, reward, done, _ = env.step(action)
 
+        if custom_reward == 'reward3' and action == supply_action:
+            n_supplied_products += 1
+
         if action_selected_by_algorithm:
             agent_num = old_state['current_agent']
 
             if custom_reward == 'reward1':
                 if 1 in old_state['agents_state'][agent_num]:
-                        product = np.where(old_state['agents_state'][agent_num] == 1)[0][0]
-                        agents_seen_products[agent_num][product] = 1
+                    product = np.where(old_state['agents_state'][agent_num] == 1)[0][0]
+                    agents_seen_products[agent_num][product] = 1
 
                 for j in range(n_products):
                     if all(elem == 0 for elem in np.array(state['products_state'][j]).flatten()):
                         agents_seen_products[agent_num][j] = 0
                 
                 reward = -1 * agents_seen_products[agent_num].count(1)
+
+            elif custom_reward == 'reward2':
+                product = np.where(old_state['agents_state'][agent_num] == 1)[0][0]
+                agents_seen_products[agent_num][product] += 1
+
+                reward = 100 * agents_seen_products[agent_num][product] * np.power(learning_agents[agent_num].get_gamma(), old_state['time'])
+
+            elif custom_reward == 'reward3':
+                reward = -1 * (n_products - n_supplied_products)
 
             agents_rewards[agent_num].append(reward)
 
