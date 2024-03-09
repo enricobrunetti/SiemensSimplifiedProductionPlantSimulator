@@ -6,7 +6,7 @@ import numpy as np
 import copy
 
 CONFIG_PATH = "config/simulator_config.json"
-OUTPUT_PATH = "output/outputDistQTestReward3"
+OUTPUT_PATH = "output/outputDistQTestReward4"
 TRAJECTORY_PATH = "output/export_trajectories_distq_test"
 
 with open(CONFIG_PATH) as config_file:
@@ -73,9 +73,9 @@ for episode in range(n_episodes):
         file.write(f"Starting episode {episode+1}\n")
 
     agents_rewards = [[] for _ in range(n_agents)]
-    if custom_reward == 'reward1' or custom_reward == 'reward2':
+    if custom_reward == 'reward1' or custom_reward == 'reward2' or custom_reward == 'reward4':
         agents_seen_products = [[0 for _ in range(n_products)] for _ in range(n_agents)]
-    elif custom_reward == 'reward3':
+    if custom_reward == 'reward3' or custom_reward == 'reward4':
         n_supplied_products = 0
 
     state = env.reset()
@@ -130,13 +130,13 @@ for episode in range(n_episodes):
 
         state, reward, done, _ = env.step(action)
 
-        if custom_reward == 'reward3' and action == supply_action:
+        if (custom_reward == 'reward3' or custom_reward == 'reward4') and action == supply_action:
             n_supplied_products += 1
 
         if action_selected_by_algorithm:
             agent_num = old_state['current_agent']
 
-            if custom_reward == 'reward1':
+            if custom_reward == 'reward1' or custom_reward == 'reward4':
                 if 1 in old_state['agents_state'][agent_num]:
                     product = np.where(old_state['agents_state'][agent_num] == 1)[0][0]
                     agents_seen_products[agent_num][product] = 1
@@ -155,6 +155,9 @@ for episode in range(n_episodes):
 
             elif custom_reward == 'reward3':
                 reward = -1 * (n_products - n_supplied_products)
+
+            if custom_reward == 'reward4' and ((n_products - n_supplied_products) != 0):
+                reward = -100
 
             agents_rewards[agent_num].append(reward)
 
