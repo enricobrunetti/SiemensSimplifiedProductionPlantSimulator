@@ -40,7 +40,8 @@ class ProductionPlantEnvironment():
         self.n_completed_products = 0
         self.current_step = 0
 
-        self.action_mask[self.current_agent] = [0 for i in range(len(self.actions))]
+        for agent in range(self.n_agents):
+            self.action_mask[agent] = np.array([0 for _ in range(len(self.actions))])
         self.action_mask[self.current_agent][0] = 1
 
         # agents state

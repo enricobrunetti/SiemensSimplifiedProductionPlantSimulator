@@ -94,7 +94,7 @@ for episode in range(n_episodes):
 
         action_selected_by_algorithm = False
 
-        if np.all(state['action_mask'][state['current_agent']] == 0) or state['agents_busy'][state['current_agent']][0] == 1:
+        if np.all(np.array(state['action_mask'][state['current_agent']]) == 0) or state['agents_busy'][state['current_agent']][0] == 1:
             # if no actions available -> do nothing
             action = nothing_action
         else:

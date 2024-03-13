@@ -19,9 +19,9 @@
                            "8": [5, null, null, 7]},
     "alpha": 0.1,
     "gamma": 0.99,
-    "beta": 1,
-    "kappa": 1,
-    "eta": 0.001,
+    "beta": 3,
+    "kappa": 3,
+    "eta": 0.0001,
     "tau": 0,
     "rho": 1
 }
