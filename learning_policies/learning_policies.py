@@ -237,7 +237,10 @@ class LPIAgent(LearningAgent):
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        values_and_policy = {'Values': self.values, 'Policy': self.policy}
+        policy_to_save = {}
+        for key, value in self.policy.items():
+            policy_to_save[key] = list(value)
+        values_and_policy = {'Values': self.values, 'Policy': policy_to_save}
         with open(model_agent_path, 'w') as outfile:
             json.dump(values_and_policy, outfile, indent=6)
 

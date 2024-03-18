@@ -6,23 +6,14 @@ from trlib.policies.valuebased import EpsilonGreedy
 from trlib.policies.qfunction import ZeroQ
 from trlib.algorithms.reinforcement.fqi import FQI
 from sklearn.ensemble import ExtraTreesRegressor
+from utils.fqi_utils import MDP
 
 INPUT_DIR = "output/export_trajectories6_POSTPROCESSED.json"
 CONFIG_PATH = "config/FQI_config.json"
 
-# TO-DO: move this inside environment class
-class MDP():
-    def __init__(self):
-        self.action_space = None
-        self.state_dim = 105 
-        self.action_dim = 1
-        self.gamma = 0.99
-
 if __name__ == '__main__':
     with open(CONFIG_PATH) as config_file:
         config = json.load(config_file)
-
-    mdp = MDP()
 
     n_agents = config['n_agents']
     actions = config['available_actions']
@@ -39,27 +30,32 @@ if __name__ == '__main__':
     # FQI
     # TO-DO: before FQI fix absorbing (see trajectories_management)
     pi = []
+    mdps = []
     agents = []
     for i in range(n_agents):
+        _, _, _, r, s_prime, absorbing, sa, _ = split_data_single_agent(INPUT_DIR, i)
 
-        pi[i] = EpsilonGreedy(actions, ZeroQ(), 0)
+        pi.append(EpsilonGreedy(actions, ZeroQ(), 0))
 
-        agents[i] = FQI(mdp, pi[i], verbose = True, actions = actions,
+        mdps.append(MDP(len(s_prime[0])))
+
+        agents.append(FQI(mdps[i], pi[i], verbose = True, actions = actions,
                         batch_size = batch_size, max_iterations = max_iterations,
-                        regressor_type = ExtraTreesRegressor, **regressor_params)
+                        regressor_type = ExtraTreesRegressor, **regressor_params))
         if seed is not None:
             np.random.seed(seed)
         else:
             np.random.seed()
 
         agents[i].reset()
-        _, _, _, r, s_prime, absorbing, sa, _ = split_data_single_agent(INPUT_DIR, i)
 
         for _ in range(max_iterations):
             agents[i]._iter(sa, r, s_prime, absorbing, **fit_params)
 
     example_state = sa[10][:-1]
     print(f'example_state: {example_state}')
-    chosen_action = agents[0]._policy.sample_action(example_state)
+    chosen_action = agents[8]._policy.sample_action(example_state)
     print('action {} has been chosen for state {}'.format(chosen_action, example_state))
+
+    print(pi[8].Q.values(sa))
 
