@@ -242,9 +242,10 @@ def split_data_single_agent(INPUT_DIR, agent):
     # TO-DO: fix s_prime
     s_prime = s[1:]
     s_prime.append(s[-1])
-    print(len(s))
-    print(len(sa))
-    print(f'len of s: {len(s[0])}')
+    #print(len(s))
+    #print(len(sa))
+    #print(f'len of s: {len(s[0])}')
+    #print(s[0])
     return np.array(t), np.array(s), np.array(a), np.array(r), np.array(s_prime), np.array(absorbing), np.array(sa), np.array(m)
 
 def flatten_dict_values(d):

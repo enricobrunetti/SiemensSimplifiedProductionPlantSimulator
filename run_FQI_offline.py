@@ -17,6 +17,7 @@ if __name__ == '__main__':
 
     n_agents = config['n_agents']
     actions = config['available_actions']
+    agents_connections = {int(k): v for k, v in config['agents_connections'].items()}
 
     regressor_params = config['regressor_params']
     
@@ -35,11 +36,15 @@ if __name__ == '__main__':
     for i in range(n_agents):
         _, _, _, r, s_prime, absorbing, sa, _ = split_data_single_agent(INPUT_DIR, i)
 
-        pi.append(EpsilonGreedy(actions, ZeroQ(), 0))
+        agent_actions = [action for action, mask in zip(actions[:-1], agents_connections[i]) if mask != None]
+        agent_actions.append(actions[-1])
+        print(agent_actions)
 
-        mdps.append(MDP(len(s_prime[0])))
+        pi.append(EpsilonGreedy(agent_actions, ZeroQ(), 0))
 
-        agents.append(FQI(mdps[i], pi[i], verbose = True, actions = actions,
+        mdps.append(MDP(len(s_prime[0]), agent_actions))
+
+        agents.append(FQI(mdps[i], pi[i], verbose = True, actions = agent_actions,
                         batch_size = batch_size, max_iterations = max_iterations,
                         regressor_type = ExtraTreesRegressor, **regressor_params))
         if seed is not None:
@@ -50,6 +55,9 @@ if __name__ == '__main__':
         agents[i].reset()
 
         for _ in range(max_iterations):
+            '''print(sa)
+            print(sa.shape)
+            print(len(sa))'''
             agents[i]._iter(sa, r, s_prime, absorbing, **fit_params)
 
     example_state = sa[10][:-1]
@@ -58,4 +66,6 @@ if __name__ == '__main__':
     print('action {} has been chosen for state {}'.format(chosen_action, example_state))
 
     print(pi[8].Q.values(sa))
+
+    agents[0]._policy.Q.save("prova")
 

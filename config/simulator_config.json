@@ -1,5 +1,5 @@
 {
-    "algorithm": "LPI",
+    "algorithm": "random",
     "test_model": true,
     "test_model_name": "models/reward4/LPI/LPI_softmax_1000_0.1_0.99_0.001_0_4_4",
     "test_model_n_episodes": 10,

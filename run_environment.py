@@ -38,15 +38,18 @@ reward_visualizer = RewardVisualizer(n_agents)
 
 performance = {}
 
-if test_model:
-    # if we are testing load existing model
-    for i in range(len(learning_agents)):
-        learning_agents[i].load(f'{test_model_name}/{i}')
+if algorithm != 'random':
+    if test_model:
+        # if we are testing load existing model
+        for i in range(len(learning_agents)):
+            learning_agents[i].load(f'{test_model_name}/{i}')
+    else:
+        # otherwise create model path
+        for agent in learning_agents:
+            agent.save()
+    model_path = learning_agents[0].get_model_name()
 else:
-    # otherwise create model path
-    for agent in learning_agents:
-        agent.save()
-model_path = learning_agents[0].get_model_name()
+    model_path = f'models/random_test'
 
 if test_model:
     file_log_name = f"{model_path}/test_logs.txt"
@@ -161,7 +164,8 @@ for episode in range(n_episodes):
 
             agents_rewards[agent_num].append(reward)
 
-            agent = learning_agents[agent_num]
+            if algorithm != 'random':
+                agent = learning_agents[agent_num]
             if not test_model and algorithm == 'DistQ':
                 next_agent_num = agent.get_next_agent_number(action)
                 next_agent = learning_agents[next_agent_num]

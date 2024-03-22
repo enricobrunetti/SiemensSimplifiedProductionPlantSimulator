@@ -31,8 +31,10 @@ class FQI(Algorithm):
             self._init_policy = init_policy
         
         if isinstance(mdp.action_space, spaces.Discrete):
+            print("aaaa")
             self._policy.Q = DiscreteFittedQ(regressor_type, mdp.state_dim, actions, **regressor_params)
         else:
+            print("bbbb")
             self._policy.Q = FittedQ(regressor_type, mdp.state_dim, mdp.action_dim, **regressor_params)
         
         self.reset()

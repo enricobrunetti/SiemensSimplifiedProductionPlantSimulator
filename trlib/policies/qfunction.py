@@ -1,5 +1,6 @@
 import numpy as np
 from numpy import matlib
+import pickle
 
 class QFunction:
     """
@@ -193,14 +194,26 @@ class DiscreteFittedQ(QFunction):
         return max_vals, max_actions
     
     def fit(self, sa, q, **fit_params):
-        
+        print(sa)
+        print(len(sa))
+        print(sa[:, -1])
+        print(len(sa[:, -1]))
         params = dict(fit_params)
         
         for a in self._actions:
             mask = sa[:,-1] == a
+            print(mask)
+            print(len(mask))
             if "sample_weight" in fit_params:
                 w = fit_params["sample_weight"]
                 w = w[mask]
                 params["sample_weight"] = w
             self._regressors[a].fit(sa[mask, 0:-1], q[mask], **params)
+
+    # added save and load of the regressor [E]
+    def save(self, path):
+        for a in self._actions:
+            action_path = f'{path}/{a}.pkl' 
+            with open(action_path,'wb') as f:
+                pickle.dump(self._regressors[a], f)
     
