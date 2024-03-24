@@ -1,5 +1,6 @@
 from production_plant_environment.env.production_plant_environment_v0 import ProductionPlantEnvironment
 from utils.learning_policies_utils import initialize_agents, get_agent_state_and_product_skill_observation_DISTQ_online
+from utils.fqi_utils import get_FQI_state
 from utils.graphs_utils import RewardVisualizer
 import json
 import numpy as np
@@ -27,8 +28,10 @@ output_log = config['output_log']
 custom_reward = config['custom_reward']
 supply_action = config['supply_action']
 
-if algorithm != 'random':
+if algorithm != 'random' and algorithm != 'FQI':
     learning_agents, update_values, policy_improvement = initialize_agents(n_agents, algorithm, n_episodes, custom_reward)
+elif algorithm == 'FQI':
+    learning_agents = initialize_agents(n_agents, algorithm, n_episodes, custom_reward)
 
 if algorithm == 'LPI':
     observations_history_LPI = {}
@@ -129,7 +132,12 @@ for episode in range(n_episodes):
                     obs = agent.generate_observation(state)
                     mask = state['action_mask'][state['current_agent']][n_production_skills:-1]
                     action = agent.select_action(obs, mask)
-
+                elif algorithm == 'FQI':
+                    agent = learning_agents[state['current_agent']]
+                    obs = get_FQI_state({'agents_state': state['agents_state'], 'products_state': state['products_state']}, agent.get_observable_neighbours(), n_products)
+                    print(obs)
+                    mask = state['action_mask'][state['current_agent']][n_production_skills:-1]
+                    action = agent.select_action(obs, mask)
 
         state, reward, done, _ = env.step(action)
 

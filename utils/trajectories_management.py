@@ -256,6 +256,9 @@ def flatten_dict_values(d):
     elif isinstance(d, list):
         for item in d:
             flattened_values.extend(flatten_dict_values(item))
+    elif isinstance(d, np.ndarray):
+        for item in d:
+            flattened_values.extend(flatten_dict_values(item))
     else:
         flattened_values.append(d)
     return flattened_values

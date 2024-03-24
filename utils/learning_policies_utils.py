@@ -1,9 +1,10 @@
-from learning_policies.learning_policies import DistributedQLearningAgent, LPIAgent
+from learning_policies.learning_policies import DistributedQLearningAgent, LPIAgent, FQIAgent
 import numpy as np
 import json
 
 DIST_Q_CONFIG_PATH = "config/DistQ_config.json"
 LPI_CONFIG_PATH = "config/LPI_config.json"
+FQI_CONFIG_PATH = "config/FQI_config.json"
 
 # given number of agents and algorithm return a list of istances of agents of that specific algorithm
 def initialize_agents(n_agents, algorithm, n_episodes, reward_type):
@@ -15,6 +16,10 @@ def initialize_agents(n_agents, algorithm, n_episodes, reward_type):
         with open(LPI_CONFIG_PATH) as config_file:
             config = json.load(config_file)
         return [LPIAgent(config, i, n_episodes, reward_type) for i in range(n_agents)], config['update_values'], config['policy_improvement']
+    elif algorithm == "FQI":
+        with open(FQI_CONFIG_PATH) as config_file:
+            config = json.load(config_file)
+        return [FQIAgent(config, i, n_episodes, reward_type) for i in range(n_agents)]
     
 # TO-DO: check if move these following 2 functions in DistributedQLearningAgent class
 

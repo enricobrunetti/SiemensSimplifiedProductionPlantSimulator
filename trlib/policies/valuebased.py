@@ -76,14 +76,19 @@ class EpsilonGreedy(ValueBased):
         probs[np.argmax(self._q_values(state))] += 1 - self._epsilon
         return probs
         
-    def sample_action(self, state):
-        
+    # added mask to avoid choosing actions that are unavailable in that moment [E]
+    def sample_action(self, state, mask):
+        masked_actions = [action for action, m in zip(self._actions, mask) if m == 1]
         if np.random.uniform() < self._epsilon:
-            return np.array([self._actions[np.random.choice(self._n_actions)]])
+            return np.array([self.masked_actions[np.random.choice(len(masked_actions))]])
+            #return np.array([self._actions[np.random.choice(self._n_actions)]])
         else:
             # added to debug
             print(f'probabilities of the policy: {self._q_values(state)}')
-            return np.array([self._actions[np.argmax(self._q_values(state))]])
+            masked_q_values = [q_value for q_value, m in zip(self._q_values(state), mask) if m == 1]
+            print(f'probabilities of the masked policy: {masked_q_values}')
+            return np.array([masked_actions[np.argmax(masked_q_values)]])
+            #return np.array([self._actions[np.argmax(self._q_values(state))]])
         
 class Softmax(ValueBased):
     """

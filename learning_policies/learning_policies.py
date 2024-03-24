@@ -1,3 +1,9 @@
+from utils.trajectories_management import split_data_single_agent
+from trlib.policies.valuebased import EpsilonGreedy
+from sklearn.ensemble import ExtraTreesRegressor
+from trlib.algorithms.reinforcement.fqi import FQI
+from utils.fqi_utils import MDP
+from trlib.policies.qfunction import ZeroQ
 import numpy as np
 import json
 import os
@@ -246,4 +252,82 @@ class LPIAgent(LearningAgent):
 
     def get_model_name(self):
         return self.model_name
+    
+class FQIAgent():
+    def __init__(self, config, agen_num, n_training_episodes, reward_type):
+        self.agent_num = agen_num
+        self.INPUT_DIR = config['INPUT_DIR']
+        self.actions = config['available_actions']
+        self.algorithm = config['algorithm']
+        self.agents_connections = {int(k): v for k, v in config['agents_connections'].items()}
+        self.observability_grade = config['observability_grade']
+        self.observable_neighbours = self.get_n_hop_neighbours(self.observability_grade)
+
+        self.regressor_params = config['regressor_params']
+        self.max_iterations = config['max_iterations']
+        self.batch_size = config['batch_size']
+        self.n_runs = config['n_runs']
+        self.n_jobs = config['n_jobs']
+        self.fit_params = config['fit_params']
+
+        self.n_training_episodes = n_training_episodes
+        self.reward_type = reward_type
+        self.model_name = f'models/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.n_training_episodes}'
+
+        _, _, _, self.r, self.s_prime, self.absorbing, self.sa, _ = split_data_single_agent(self.INPUT_DIR, self.agent_num)
+
+        self.agent_actions = [action for action, mask in zip(self.actions[:-1], self.agents_connections[self.agent_num]) if mask != None]
+        self.agent_actions.append(self.actions[-1])
+
+        self.pi = EpsilonGreedy(self.agent_actions, ZeroQ(), 0)
+
+        self.mdp = MDP(len(self.s_prime[0]), self.agent_actions)
+
+        self.fqi_agent = FQI(self.mdp, self.pi, verbose = True, actions = self.agent_actions,
+                        batch_size = self.batch_size, max_iterations = self.max_iterations,
+                        regressor_type = ExtraTreesRegressor, **self.regressor_params)
+
+        self.fqi_agent.reset()
+
+    def iter(self):
+        for _ in range(self.max_iterations):
+            self.fqi_agent._iter(self.sa, self.r, self.s_prime, self.absorbing, **self.fit_params)
+
+    def select_action(self, observation, mask):
+        # adjust mask to make it contain only actions possible for that specific agent
+        adjusted_mask = [mask for mask, isPossible in zip(mask[:-1], self.agents_connections[self.agent_num]) if isPossible != None]
+        adjusted_mask.append(mask[-1])
+        return self.fqi_agent._policy.sample_action(observation, adjusted_mask)[0]
+    
+    def get_n_hop_neighbours(self, n_hop):
+        neighbour = set()
+        for i in range(n_hop):
+            if i == 0:
+                neighbour = set(elem for elem in self.agents_connections[self.agent_num] if elem != None)
+            else:
+                for elem in neighbour:
+                    new_neighbours = set(new_elem for new_elem in self.agents_connections[elem] if new_elem != None)
+                    neighbour = neighbour.union(new_neighbours)
+        
+        if self.agent_num not in neighbour:
+            neighbour.add(self.agent_num)
+
+        return list(neighbour)
+    
+    def get_model_name(self):
+        return self.model_name
+    
+    def get_observable_neighbours(self):
+        return self.observable_neighbours
+    
+    def save(self):
+        model_agent_path = f'{self.model_name}/{self.agent_num}'
+        if not os.path.exists(model_agent_path):
+            os.makedirs(model_agent_path)
+        self.fqi_agent._policy.Q.save(model_agent_path)
+        
+    def load(self, model_name):
+        self.fqi_agent._policy.Q.load(model_name)
+    
+
     

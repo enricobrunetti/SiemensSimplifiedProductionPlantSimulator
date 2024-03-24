@@ -6,9 +6,28 @@ from trlib.policies.valuebased import EpsilonGreedy
 from trlib.policies.qfunction import ZeroQ
 from trlib.algorithms.reinforcement.fqi import FQI
 from sklearn.ensemble import ExtraTreesRegressor
-from utils.fqi_utils import MDP
 
-INPUT_DIR = "output/export_trajectories6_POSTPROCESSED.json"
+from utils.learning_policies_utils import initialize_agents
+
+algorithm = "FQI"
+n_episodes = 10
+n_agents = 9
+reward_type = "reward1"
+
+learning_agents = initialize_agents(n_agents, algorithm, n_episodes, reward_type)
+for agent in learning_agents:
+    agent.iter()
+
+_, _, _, r, s_prime, absorbing, sa, _ = split_data_single_agent("output/export_trajectories6_POSTPROCESSED.json", 2)
+example_state = sa[10][:-1]
+mask = [1, 1, 1, 1, 1]
+action = learning_agents[2].select_action(example_state, mask)
+print(f'action selected: {action}')
+
+for agent in learning_agents:
+    agent.save()
+
+'''INPUT_DIR = "output/export_trajectories6_POSTPROCESSED.json"
 CONFIG_PATH = "config/FQI_config.json"
 
 if __name__ == '__main__':
@@ -25,7 +44,6 @@ if __name__ == '__main__':
     batch_size = config['batch_size']
     n_runs = config['n_runs']
     n_jobs = config['n_jobs']
-    seed = config['seed']
     fit_params = config['fit_params']
 
     # FQI
@@ -47,17 +65,10 @@ if __name__ == '__main__':
         agents.append(FQI(mdps[i], pi[i], verbose = True, actions = agent_actions,
                         batch_size = batch_size, max_iterations = max_iterations,
                         regressor_type = ExtraTreesRegressor, **regressor_params))
-        if seed is not None:
-            np.random.seed(seed)
-        else:
-            np.random.seed()
 
         agents[i].reset()
 
         for _ in range(max_iterations):
-            '''print(sa)
-            print(sa.shape)
-            print(len(sa))'''
             agents[i]._iter(sa, r, s_prime, absorbing, **fit_params)
 
     example_state = sa[10][:-1]
@@ -65,7 +76,12 @@ if __name__ == '__main__':
     chosen_action = agents[8]._policy.sample_action(example_state)
     print('action {} has been chosen for state {}'.format(chosen_action, example_state))
 
-    print(pi[8].Q.values(sa))
+    #print(pi[8].Q.values(sa))
 
-    agents[0]._policy.Q.save("prova")
+    agents[8]._policy.Q.save("prova")
+    agents[8]._policy.Q.load("prova")
 
+    chosen_action = agents[8]._policy.sample_action(example_state)
+    print('action {} has been chosen for state {}'.format(chosen_action, example_state))
+
+'''

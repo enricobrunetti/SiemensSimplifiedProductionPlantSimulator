@@ -214,6 +214,12 @@ class DiscreteFittedQ(QFunction):
     def save(self, path):
         for a in self._actions:
             action_path = f'{path}/{a}.pkl' 
-            with open(action_path,'wb') as f:
+            with open(action_path, 'wb') as f:
                 pickle.dump(self._regressors[a], f)
+
+    def load(self, path):
+        for a in self._actions:
+            action_path = f'{path}/{a}.pkl'
+            with open(action_path, 'rb') as f:
+                self._regressors[a] = pickle.load(f)
     
