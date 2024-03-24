@@ -281,7 +281,11 @@ else:
     performance_log_name = f"{model_path}/training_performance.txt"
 
 with open(performance_log_name, 'w') as file:
-    file.write(f"Avg time to complete: {np.average([performance[i]['episode_duration'] for i in range(n_episodes)])}\n")
+    episodes_time_to_complete = [performance[i]['episode_duration'] for i in range(n_episodes)]
+    file.write(f"Min time to complete: {np.min(episodes_time_to_complete)}\n")
+    file.write(f"Avg time to complete: {np.average(episodes_time_to_complete)}\n")
+    file.write(f"Max time to complete: {np.max(episodes_time_to_complete)}\n")
+    file.write(f"Variance of time to complete: {np.var(episodes_time_to_complete)}\n")
     for j in range(n_agents):
         file.write(f"Agent {j} mean reward: {np.average([performance[i][j]['mean_reward'] for i in range(n_episodes)])}\n")
     file.write(f"\n")

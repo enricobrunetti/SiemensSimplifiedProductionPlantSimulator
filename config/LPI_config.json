@@ -4,7 +4,7 @@
     "exploration_prob": 0.5,
     "update_values": "episode",
     "policy_improvement": "episode",
-    "p_max": 10,
+    "p_max": 1,
     "n_agents": 9,
     "n_products": 5,
     "available_actions": [6, 7, 8, 9, 10],
