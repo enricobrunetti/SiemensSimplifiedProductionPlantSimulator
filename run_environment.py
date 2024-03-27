@@ -84,6 +84,14 @@ for episode in range(n_episodes):
     if custom_reward == 'reward3' or custom_reward == 'reward4':
         n_supplied_products = 0
 
+    if algorithm == 'DistQ' or algorithm == 'LPI':
+        for agent in learning_agents:
+            if test_model:
+                agent.update_exploration_prob(test_model)
+            else:
+                # update exploration probability basing on episode
+                agent.update_exploration_prob(test_model, episode + 1)
+
     state = env.reset()
     old_state = copy.deepcopy(state)
 
@@ -287,7 +295,7 @@ with open(performance_log_name, 'w') as file:
     file.write(f"Max time to complete: {np.max(episodes_time_to_complete)}\n")
     file.write(f"Variance of time to complete: {np.var(episodes_time_to_complete)}\n")
     for j in range(n_agents):
-        file.write(f"Agent {j} mean reward: {np.average([performance[i][j]['mean_reward'] for i in range(n_episodes)])}\n")
+        file.write(f"Agent {j} mean reward: {np.nanmean([performance[i][j]['mean_reward'] for i in range(n_episodes)])}\n")
     file.write(f"\n")
     for i in range(n_episodes):
         file.write(f"****Episode {i+1}****\n")

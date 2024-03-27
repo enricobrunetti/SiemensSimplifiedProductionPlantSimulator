@@ -36,19 +36,38 @@ class LearningAgent:
         self.p_max = config['p_max']
 
         self.actions_policy = config['actions_policy']
-        self.exploration_prob = config['exploration_prob']
+
+        self.initial_exploration_prob = config['initial_exploration_prob']
+        self.min_exploration_prob = config['min_exploration_prob']
+        self.episode_interval = self.n_training_episodes / 10
+        self.exploration_prob_decreasing_factor = np.round((self.initial_exploration_prob - self.min_exploration_prob) / 10, 2)
+        self.exploration_prob = self.initial_exploration_prob
 
         self.model_name = f'models/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}'
         if config['actions_policy'] == "softmax":
             self.model_name += f'_{self.p_max}'
+        elif config['actions_policy'] == "eps-greedy":
+            # DEP = decreasing exploration probability
+            self.model_name += f'_DEP'
 
     def apply_values_update(self):
         self.values = self.values_updated
 
+    # update exploration probability basing on the number of episodes
+    def update_exploration_prob(self, isTest, current_episode = None, new_exploration_prob = None):
+        if isTest:
+            self.exploration_prob = self.min_exploration_prob
+        else:
+            if new_exploration_prob:
+                self.exploration_prob = new_exploration_prob
+            else:
+                if current_episode % self.episode_interval == 0:
+                    self.exploration_prob = np.round(self.exploration_prob - self.exploration_prob_decreasing_factor, 2)
+
     def select_action(self, observation, mask):
         allowed_actions = [action for action, mask in zip(self.actions, mask) if mask != 0]
         rescaled_non_production_actions = [action - self.actions[0] for action in allowed_actions]
-        
+        print(f'Exploration prob: {self.exploration_prob}')
         if self.actions_policy == 'eps-greedy':
             if np.random.rand() < self.exploration_prob:
                 print('random action choosen')
@@ -162,6 +181,9 @@ class LPIAgent(LearningAgent):
         self.model_name = f'models/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}_{self.beta}_{self.kappa}'
         if config['actions_policy'] == "softmax":
             self.model_name += f'_{self.p_max}'
+        elif config['actions_policy'] == "eps-greedy":
+            # DEP = decreasing exploration probability
+            self.model_name += f'_DEP'
 
     def get_n_hop_neighbours(self, n_hop):
         neighbour = set()

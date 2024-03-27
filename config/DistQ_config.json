@@ -1,7 +1,8 @@
 {
     "algorithm": "DistQ",
     "actions_policy": "softmax",
-    "exploration_prob": 0.5,
+    "initial_exploration_prob": 1.0,
+    "min_exploration_prob": 0.2,
     "update_values": "episode",
     "policy_improvement": "episode",
     "p_max": 10,
