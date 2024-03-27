@@ -39,6 +39,8 @@ class LearningAgent:
         self.exploration_prob = config['exploration_prob']
 
         self.model_name = f'models/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}'
+        if config['actions_policy'] == "softmax":
+            self.model_name += f'_{self.p_max}'
 
     def apply_values_update(self):
         self.values = self.values_updated
@@ -158,6 +160,8 @@ class LPIAgent(LearningAgent):
         self.neighbours_beta = self.get_n_hop_neighbours(self.beta)
 
         self.model_name = f'models/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}_{self.beta}_{self.kappa}'
+        if config['actions_policy'] == "softmax":
+            self.model_name += f'_{self.p_max}'
 
     def get_n_hop_neighbours(self, n_hop):
         neighbour = set()
