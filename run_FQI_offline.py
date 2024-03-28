@@ -1,16 +1,10 @@
 import json
 import numpy as np
-from production_plant_environment.env.production_plant_environment_v0 import ProductionPlantEnvironment
 from utils.trajectories_management import split_data_single_agent
-from trlib.policies.valuebased import EpsilonGreedy
-from trlib.policies.qfunction import ZeroQ
-from trlib.algorithms.reinforcement.fqi import FQI
-from sklearn.ensemble import ExtraTreesRegressor
-
 from utils.learning_policies_utils import initialize_agents
 
 algorithm = "FQI"
-n_episodes = 10
+n_episodes = 50
 n_agents = 9
 reward_type = "reward1"
 
@@ -18,7 +12,7 @@ learning_agents = initialize_agents(n_agents, algorithm, n_episodes, reward_type
 for agent in learning_agents:
     agent.iter()
 
-_, _, _, r, s_prime, absorbing, sa, _ = split_data_single_agent("output/export_trajectories6_POSTPROCESSED.json", 2)
+_, _, _, r, s_prime, absorbing, sa, _ = split_data_single_agent("output/export_trajectories_FQI_NEW_TEST_POSTPROCESSED.json", 2)
 example_state = sa[10][:-1]
 mask = [1, 1, 1, 1, 1]
 action = learning_agents[2].select_action(example_state, mask)

@@ -295,6 +295,7 @@ class FQIAgent():
         self.n_runs = config['n_runs']
         self.n_jobs = config['n_jobs']
         self.fit_params = config['fit_params']
+        self.exploration_probability = config['exploration_probability']
 
         self.n_training_episodes = n_training_episodes
         self.reward_type = reward_type
@@ -305,7 +306,7 @@ class FQIAgent():
         self.agent_actions = [action for action, mask in zip(self.actions[:-1], self.agents_connections[self.agent_num]) if mask != None]
         self.agent_actions.append(self.actions[-1])
 
-        self.pi = EpsilonGreedy(self.agent_actions, ZeroQ(), 0)
+        self.pi = EpsilonGreedy(self.agent_actions, ZeroQ(), self.exploration_probability)
 
         self.mdp = MDP(len(self.s_prime[0]), self.agent_actions)
 

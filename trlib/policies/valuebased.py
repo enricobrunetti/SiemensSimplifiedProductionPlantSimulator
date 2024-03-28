@@ -80,7 +80,7 @@ class EpsilonGreedy(ValueBased):
     def sample_action(self, state, mask):
         masked_actions = [action for action, m in zip(self._actions, mask) if m == 1]
         if np.random.uniform() < self._epsilon:
-            return np.array([self.masked_actions[np.random.choice(len(masked_actions))]])
+            return np.array([masked_actions[np.random.choice(len(masked_actions))]])
             #return np.array([self._actions[np.random.choice(self._n_actions)]])
         else:
             # added to debug

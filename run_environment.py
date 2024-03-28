@@ -7,8 +7,8 @@ import numpy as np
 import copy
 
 CONFIG_PATH = "config/simulator_config.json"
-OUTPUT_PATH = "output/outputDistQTestReward1"
-TRAJECTORY_PATH = "output/export_trajectories_distq_test"
+OUTPUT_PATH = "output/TESTFQI"
+TRAJECTORY_PATH = "output/export_trajectories_FQI_NEW_TEST"
 
 with open(CONFIG_PATH) as config_file:
     config = json.load(config_file)
@@ -142,10 +142,13 @@ for episode in range(n_episodes):
                     action = agent.select_action(obs, mask)
                 elif algorithm == 'FQI':
                     agent = learning_agents[state['current_agent']]
-                    obs = get_FQI_state({'agents_state': state['agents_state'], 'products_state': state['products_state']}, agent.get_observable_neighbours(), n_products)
-                    print(obs)
+                    obs = get_FQI_state({'agents_state': state['agents_state'].copy(), 'products_state': state['products_state'].copy()}, agent.get_observable_neighbours(), n_products)
                     mask = state['action_mask'][state['current_agent']][n_production_skills:-1]
                     action = agent.select_action(obs, mask)
+                    '''print("*****")
+                    print(old_state['products_state'])
+                    print(action)
+                    print("*****")'''
 
         state, reward, done, _ = env.step(action)
 
@@ -212,8 +215,9 @@ for episode in range(n_episodes):
                     if update_values == 'step':
                         agent.apply_values_update()
             
-            if not test_model and policy_improvement == 'step':
-                agent.soft_policy_improvement()
+            if algorithm != 'random':
+                if not test_model and policy_improvement == 'step':
+                    agent.soft_policy_improvement()
             
             with open(file_log_name, 'a') as file:
                 source_agent = old_state['current_agent']
@@ -251,13 +255,14 @@ for episode in range(n_episodes):
             print(f"The episode {episode+1}/{n_episodes} is finished.")
             break
 
-    if not test_model and update_values == 'episode':
-        for agent in learning_agents:
-            agent.apply_values_update()
-    
-    if not test_model and policy_improvement == 'episode':
-        for agent in learning_agents:
-            agent.soft_policy_improvement()
+    if algorithm != 'random':
+        if not test_model and update_values == 'episode':
+            for agent in learning_agents:
+                agent.apply_values_update()
+        
+        if not test_model and policy_improvement == 'episode':
+            for agent in learning_agents:
+                agent.soft_policy_improvement()
 
     with open(file_log_name, 'a') as file:
         file.write(f"Episode {episode+1} ended\n")
