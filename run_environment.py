@@ -1,7 +1,7 @@
 from production_plant_environment.env.production_plant_environment_v0 import ProductionPlantEnvironment
 from utils.learning_policies_utils import initialize_agents, get_agent_state_and_product_skill_observation_DISTQ_online
 from utils.fqi_utils import get_FQI_state
-from utils.graphs_utils import RewardVisualizer
+from utils.graphs_utils import DistQAndLPIPlotter, RewardVisualizer
 import json
 import numpy as np
 import copy
@@ -27,6 +27,7 @@ export_trajectories = config['export_trajectories']
 output_log = config['output_log']
 custom_reward = config['custom_reward']
 supply_action = config['supply_action']
+discount_factor = config['gamma']
 
 if algorithm != 'random' and algorithm != 'FQI':
     learning_agents, update_values, policy_improvement = initialize_agents(n_agents, algorithm, n_episodes, custom_reward)
@@ -78,7 +79,13 @@ for episode in range(n_episodes):
     with open(file_log_name, 'a') as file:
         file.write(f"Starting episode {episode+1}\n")
 
+    # used for old reward counting (before new graph)
     agents_rewards = [[] for _ in range(n_agents)]
+    # used for reward computation for new graph
+    agents_rewards_for_plot = {}
+    for i in range(n_agents):
+        agents_rewards_for_plot[i] = 0
+
     if custom_reward == 'reward1' or custom_reward == 'reward2' or custom_reward == 'reward4':
         agents_seen_products = [[0 for _ in range(n_products)] for _ in range(n_agents)]
     if custom_reward == 'reward3' or custom_reward == 'reward4':
@@ -182,6 +189,8 @@ for episode in range(n_episodes):
                 reward = -100
 
             agents_rewards[agent_num].append(reward)
+            # check: verifica se è corretto old_state
+            agents_rewards_for_plot[agent_num] += np.power(discount_factor,  old_state['time']) * reward
 
             if algorithm != 'random':
                 agent = learning_agents[agent_num]
@@ -269,6 +278,7 @@ for episode in range(n_episodes):
 
     performance[episode] = {}
     performance[episode]['episode_duration'] = state['time']
+    performance[episode]['agents_reward_for_plot'] = agents_rewards_for_plot
 
     for i in range(n_agents):
         mean_reward = np.mean(agents_rewards[i])
@@ -279,8 +289,14 @@ for episode in range(n_episodes):
 
 if test_model:
     plot_path = f"{model_path}/test_reward_graph.png"
+    info_for_plot_path = f"{model_path}/reward_for_plot_test.json"
 else:
     plot_path = f"{model_path}/training_reward_graph.png"
+    info_for_plot_path = f"{model_path}/reward_for_plot_training.json"
+
+with open(info_for_plot_path, 'w') as outfile:
+    json.dump(performance, outfile, indent=6)
+
 reward_visualizer.save_plot(plot_path)
 reward_visualizer.show_plot()
 
@@ -290,6 +306,13 @@ if not test_model:
 
 if test_model:
     performance_log_name = f"{model_path}/test_performance.txt"
+
+    if algorithm != 'random':
+        baseline_path = f'models/random_test'
+
+        plotter = DistQAndLPIPlotter(model_path, baseline_path)
+        plotter.plot_reward_graphs()
+        plotter.plot_performance_graph()
 else:
     performance_log_name = f"{model_path}/training_performance.txt"
 
