@@ -5,6 +5,7 @@
     "min_exploration_prob": 0.2,
     "update_values": "episode",
     "policy_improvement": "episode",
+    "q_value_init": null,
     "p_max": 10,
     "n_agents": 9,
     "n_products": 5,

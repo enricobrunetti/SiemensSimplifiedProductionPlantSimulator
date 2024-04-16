@@ -24,7 +24,10 @@ class LearningAgent:
         self.eta = config['eta']
         self.tau = config['tau']
         
-        self.default_q_value = np.round(-self.n_products/(1 - self.gamma), 3)
+        if config['q_value_init'] is not None:
+            self.default_q_value = config['q_value_init']
+        else:
+            self.default_q_value = np.round(-self.n_products/(1 - self.gamma), 3)
 
         self.values = {}
         self.policy = {}
@@ -43,7 +46,7 @@ class LearningAgent:
         self.exploration_prob_decreasing_factor = np.round((self.initial_exploration_prob - self.min_exploration_prob) / 10, 2)
         self.exploration_prob = self.initial_exploration_prob
 
-        self.model_name = f'models/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}'
+        self.model_name = f'models/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}_q_init:{self.default_q_value}'
         if config['actions_policy'] == "softmax":
             self.model_name += f'_{self.p_max}'
         elif config['actions_policy'] == "eps-greedy":
@@ -178,7 +181,7 @@ class LPIAgent(LearningAgent):
         self.neighbours_kappa = self.get_n_hop_neighbours(self.kappa)
         self.neighbours_beta = self.get_n_hop_neighbours(self.beta)
 
-        self.model_name = f'models/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}_{self.beta}_{self.kappa}'
+        self.model_name = f'models/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}__q_init:{self.default_q_value}_{self.beta}_{self.kappa}'
         if config['actions_policy'] == "softmax":
             self.model_name += f'_{self.p_max}'
         elif config['actions_policy'] == "eps-greedy":

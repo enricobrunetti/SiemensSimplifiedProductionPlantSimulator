@@ -17,16 +17,20 @@ class DistQAndLPIPlotter:
             self.baseline_performances = json.load(infile)
 
     def plot_single_agent_reward_graph(self, agent_num):
-        episodes_train = [episode for episode in self.training_performances.keys()]
-        episodes_test = [episode for episode in self.test_performances.keys()]
         training_rewards = [episode["agents_reward_for_plot"][str(agent_num)] for episode in self.training_performances.values()]
         test_rewards = [episode["agents_reward_for_plot"][str(agent_num)] for episode in self.test_performances.values()]
         baseline_rewards = [episode["agents_reward_for_plot"][str(agent_num)] for episode in self.baseline_performances.values()]
 
+        # Downsampling with convolution
+        kernel_size = 100
+        kernel = np.ones(kernel_size) / kernel_size
+
+        training_smoothed_reward = np.convolve(training_rewards, kernel, mode='valid')
+
         # 95% confidence intervals computation
-        training_mean = np.mean(training_rewards)
-        training_std = np.std(training_rewards)
-        training_ci = 1.96 * (training_std / np.sqrt(len(training_rewards)))
+        training_mean = np.mean(training_smoothed_reward)
+        training_std = np.std(training_smoothed_reward)
+        training_ci = 1.96 * (training_std / np.sqrt(len(training_smoothed_reward)))
 
         test_mean = np.mean(test_rewards)
         test_std = np.std(test_rewards)
@@ -36,21 +40,12 @@ class DistQAndLPIPlotter:
         baseline_std = np.std(baseline_rewards)
         baseline_ci = 1.96 * (baseline_std / np.sqrt(len(baseline_rewards)))
 
-        # Downsampling
-        step = len(episodes_train) // 100
-        sampled_training_rewards = [training_rewards[i] for i in range(0, len(training_rewards), step)]
-        sampled_episodes_train = [i * step for i in range(len(sampled_training_rewards))]
-
-        step = len(sampled_episodes_train) // 10
-        xticks = [sampled_episodes_train[i * step] for i in range(10)]
-
         # Plot creation
         fig, axs = plt.subplots(1, 2, figsize=(15, 6), gridspec_kw={'width_ratios': [4, 1]})
-
         # Plot for training phase
-        axs[0].plot(sampled_episodes_train, sampled_training_rewards, label='Training Reward', color='blue')
-        axs[0].fill_between(sampled_episodes_train, sampled_training_rewards - training_ci, sampled_training_rewards + training_ci, color='blue', alpha=0.2)
-        axs[0].set_xticks(xticks)
+        axs[0].plot(training_smoothed_reward, label='Training Reward', color='blue')
+        axs[0].fill_between(range(len(training_smoothed_reward)), training_smoothed_reward - training_ci, training_smoothed_reward + training_ci, color='orange', alpha=0.5, label='Confidence Interval 95%')
+        axs[0].set_xticks([])
         axs[0].set_title('Training Phase')
         axs[0].legend()
         axs[0].set_ylabel('Reward')
@@ -75,16 +70,20 @@ class DistQAndLPIPlotter:
             self.plot_single_agent_reward_graph(i)
 
     def plot_performance_graph(self):
-        episodes_train = [episode for episode in self.training_performances.keys()]
-        episodes_test = [episode for episode in self.test_performances.keys()]
         training_duration = [episode["episode_duration"] for episode in self.training_performances.values()]
         test_duration = [episode["episode_duration"] for episode in self.test_performances.values()]
         baseline_duration = [episode["episode_duration"] for episode in self.baseline_performances.values()]
 
+        # Downsampling with convolution
+        kernel_size = 100
+        kernel = np.ones(kernel_size) / kernel_size
+
+        training_smoothed_duration = np.convolve(training_duration, kernel, mode='valid')
+
         # 95% confidence intervals computation
-        training_mean = np.mean(training_duration)
-        training_std = np.std(training_duration)
-        training_ci = 1.96 * (training_std / np.sqrt(len(training_duration)))
+        training_mean = np.mean(training_smoothed_duration)
+        training_std = np.std(training_smoothed_duration)
+        training_ci = 1.96 * (training_std / np.sqrt(len(training_smoothed_duration)))
 
         test_mean = np.mean(test_duration)
         test_std = np.std(test_duration)
@@ -94,21 +93,13 @@ class DistQAndLPIPlotter:
         baseline_std = np.std(baseline_duration)
         baseline_ci = 1.96 * (baseline_std / np.sqrt(len(baseline_duration)))
 
-        # Downsampling
-        step = len(episodes_train) // 100
-        sampled_training_duration = [training_duration[i] for i in range(0, len(training_duration), step)]
-        sampled_episodes_train = [i * step for i in range(len(sampled_training_duration))]
-
-        step = len(sampled_episodes_train) // 10
-        xticks = [sampled_episodes_train[i * step] for i in range(10)]
-
         # Plot creation
         fig, axs = plt.subplots(1, 2, figsize=(15, 6), gridspec_kw={'width_ratios': [4, 1]})
 
         # Plot for training phase
-        axs[0].plot(sampled_episodes_train, sampled_training_duration, label='Training Duration', color='blue')
-        axs[0].fill_between(sampled_episodes_train, sampled_training_duration - training_ci, sampled_training_duration + training_ci, color='blue', alpha=0.2)
-        axs[0].set_xticks(xticks)
+        axs[0].plot(training_smoothed_duration, label='Training Duration', color='blue')
+        axs[0].fill_between(range(len(training_smoothed_duration)), training_smoothed_duration - training_ci, training_smoothed_duration + training_ci, color='orange', alpha=0.5, label='Confidence Interval 95%')
+        axs[0].set_xticks([])
         axs[0].set_title('Training Phase')
         axs[0].legend()
         axs[0].set_ylabel('Episodes Duration')
