@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import json
+from bootstrapped import bootstrap as bs
+from bootstrapped import stats_functions as bs_stats
 
 class DistQAndLPIPlotter:
     def __init__(self, model_path, baseline_path):
@@ -21,16 +23,34 @@ class DistQAndLPIPlotter:
         test_rewards = [episode["agents_reward_for_plot"][str(agent_num)] for episode in self.test_performances.values()]
         baseline_rewards = [episode["agents_reward_for_plot"][str(agent_num)] for episode in self.baseline_performances.values()]
 
-        # Downsampling with convolution
-        kernel_size = 100
-        kernel = np.ones(kernel_size) / kernel_size
-
-        training_smoothed_reward = np.convolve(training_rewards, kernel, mode='valid')
-
         # 95% confidence intervals computation
-        training_mean = np.mean(training_smoothed_reward)
-        training_std = np.std(training_smoothed_reward)
-        training_ci = 1.96 * (training_std / np.sqrt(len(training_smoothed_reward)))
+        confidence_level = 0.95
+        # Number of bootstraps
+        num_bootstraps = 1000
+        alpha = 1 - confidence_level
+
+        # Compute confidence intervals
+        res_training_bs = bs.bootstrap(np.array(training_rewards), stat_func=bs_stats.mean, num_iterations=num_bootstraps, alpha=alpha)
+        # Lower and upper confidence intervals
+        lower_ci_training = res_training_bs.lower_bound
+        upper_ci_training = res_training_bs.upper_bound
+        
+        # Compute confidence intervals
+        res_test_bs = bs.bootstrap(np.array(test_rewards), stat_func=bs_stats.mean, num_iterations=num_bootstraps, alpha=alpha)
+        # Lower and upper confidence intervals
+        lower_ci_test = res_test_bs.lower_bound
+        upper_ci_test = res_test_bs.upper_bound
+
+        # Compute confidence intervals
+        res_baseline_bs = bs.bootstrap(np.array(baseline_rewards), stat_func=bs_stats.mean, num_iterations=num_bootstraps, alpha=alpha)
+        # Lower and upper confidence intervals
+        lower_ci_baseline = res_baseline_bs.lower_bound
+        upper_ci_baseline = res_baseline_bs.upper_bound
+
+        '''# 95% confidence intervals computation
+        training_mean = np.mean(training_rewards)
+        training_std = np.std(training_rewards)
+        training_ci = 1.96 * (training_std / np.sqrt(len(training_rewards)))
 
         test_mean = np.mean(test_rewards)
         test_std = np.std(test_rewards)
@@ -38,22 +58,31 @@ class DistQAndLPIPlotter:
 
         baseline_mean = np.mean(baseline_rewards)
         baseline_std = np.std(baseline_rewards)
-        baseline_ci = 1.96 * (baseline_std / np.sqrt(len(baseline_rewards)))
+        baseline_ci = 1.96 * (baseline_std / np.sqrt(len(baseline_rewards)))'''
+
+        # Downsampling with convolution
+        kernel_size = 100
+        kernel = np.ones(kernel_size) / kernel_size
+
+        training_smoothed_reward_lower = np.convolve(training_rewards - lower_ci_training, kernel, mode='valid')
+        training_smoothed_reward = np.convolve(training_rewards, kernel, mode='valid')
+        training_smoothed_reward_upper = np.convolve(training_rewards + upper_ci_training, kernel, mode='valid')
 
         # Plot creation
         fig, axs = plt.subplots(1, 2, figsize=(15, 6), gridspec_kw={'width_ratios': [4, 1]})
         # Plot for training phase
-        axs[0].plot(training_smoothed_reward, label='Training Reward', color='blue')
-        axs[0].fill_between(range(len(training_smoothed_reward)), training_smoothed_reward - training_ci, training_smoothed_reward + training_ci, color='orange', alpha=0.5, label='Confidence Interval 95%')
-        axs[0].set_xticks([])
+        #axs[0].plot(range(len(training_rewards)), training_rewards, label='Training Rewards', alpha=0.2)
+        #axs[0].fill_between(range(len(training_rewards)), training_rewards - lower_ci_training, training_rewards + upper_ci_training, color='orange', alpha=0.2, label='Reward Confidence Interval 95%')
+        axs[0].plot(range(len(training_smoothed_reward)), training_smoothed_reward, label='Training Rewards Convolved')
+        axs[0].fill_between(range(len(training_smoothed_reward)), training_smoothed_reward_lower, training_smoothed_reward_upper, color='yellow', alpha=0.2, label='Convolved Reward Confidence Interval 95%')
         axs[0].set_title('Training Phase')
         axs[0].legend()
         axs[0].set_ylabel('Reward')
         axs[0].set_xlabel('Episodes')
 
         # Plot for test phase
-        axs[1].errorbar(0.4, test_mean, yerr=[test_ci], fmt='o', capsize=5, label='Test Reward', color='green')
-        axs[1].errorbar(0.6, baseline_mean, yerr=[baseline_ci], fmt='o', capsize =5, label='Baseline Reward', color='red')
+        axs[1].errorbar(0.4, res_test_bs.value, yerr=[[res_test_bs.value - lower_ci_test], [upper_ci_test - res_test_bs.value]], fmt='o', capsize=5, label='Test Reward', color='green')
+        axs[1].errorbar(0.6, res_baseline_bs.value, yerr=[[res_baseline_bs.value - lower_ci_baseline], [upper_ci_baseline - res_baseline_bs.value]], fmt='o', capsize=5, label='Baseline Reward', color='red')
         axs[1].set_xticks([])
         axs[1].set_xlim(0, 1)
         axs[1].set_title('Test Phase')
@@ -74,16 +103,34 @@ class DistQAndLPIPlotter:
         test_duration = [episode["episode_duration"] for episode in self.test_performances.values()]
         baseline_duration = [episode["episode_duration"] for episode in self.baseline_performances.values()]
 
-        # Downsampling with convolution
-        kernel_size = 100
-        kernel = np.ones(kernel_size) / kernel_size
-
-        training_smoothed_duration = np.convolve(training_duration, kernel, mode='valid')
-
         # 95% confidence intervals computation
-        training_mean = np.mean(training_smoothed_duration)
-        training_std = np.std(training_smoothed_duration)
-        training_ci = 1.96 * (training_std / np.sqrt(len(training_smoothed_duration)))
+        confidence_level = 0.95
+        # Number of bootstraps
+        num_bootstraps = 1000
+        alpha = 1 - confidence_level
+
+        # Compute confidence intervals
+        res_training_bs = bs.bootstrap(np.array(training_duration), stat_func=bs_stats.mean, num_iterations=num_bootstraps, alpha=alpha)
+        # Lower and upper confidence intervals
+        lower_ci_training = res_training_bs.lower_bound
+        upper_ci_training = res_training_bs.upper_bound
+        
+        # Compute confidence intervals
+        res_test_bs = bs.bootstrap(np.array(test_duration), stat_func=bs_stats.mean, num_iterations=num_bootstraps, alpha=alpha)
+        # Lower and upper confidence intervals
+        lower_ci_test = res_test_bs.lower_bound
+        upper_ci_test = res_test_bs.upper_bound
+
+        # Compute confidence intervals
+        res_baseline_bs = bs.bootstrap(np.array(baseline_duration), stat_func=bs_stats.mean, num_iterations=num_bootstraps, alpha=alpha)
+        # Lower and upper confidence intervals
+        lower_ci_baseline = res_baseline_bs.lower_bound
+        upper_ci_baseline = res_baseline_bs.upper_bound
+
+        '''# 95% confidence intervals computation
+        training_mean = np.mean(training_duration)
+        training_std = np.std(training_duration)
+        training_ci = 1.96 * (training_std / np.sqrt(len(training_duration)))
 
         test_mean = np.mean(test_duration)
         test_std = np.std(test_duration)
@@ -91,23 +138,32 @@ class DistQAndLPIPlotter:
 
         baseline_mean = np.mean(baseline_duration)
         baseline_std = np.std(baseline_duration)
-        baseline_ci = 1.96 * (baseline_std / np.sqrt(len(baseline_duration)))
+        baseline_ci = 1.96 * (baseline_std / np.sqrt(len(baseline_duration)))'''
+
+        # Downsampling with convolution
+        kernel_size = 100
+        kernel = np.ones(kernel_size) / kernel_size
+
+        training_smoothed_duration_lower = np.convolve(training_duration - lower_ci_training, kernel, mode='valid')
+        training_smoothed_duration = np.convolve(training_duration, kernel, mode='valid')
+        training_smoothed_duration_upper = np.convolve(training_duration + upper_ci_training, kernel, mode='valid')
 
         # Plot creation
         fig, axs = plt.subplots(1, 2, figsize=(15, 6), gridspec_kw={'width_ratios': [4, 1]})
 
         # Plot for training phase
-        axs[0].plot(training_smoothed_duration, label='Training Duration', color='blue')
-        axs[0].fill_between(range(len(training_smoothed_duration)), training_smoothed_duration - training_ci, training_smoothed_duration + training_ci, color='orange', alpha=0.5, label='Confidence Interval 95%')
-        axs[0].set_xticks([])
+        #axs[0].plot(range(len(training_duration)), training_duration, label='Training Duration', alpha=0.2)
+        #axs[0].fill_between(range(len(training_duration)), training_duration - lower_ci_training, training_duration + upper_ci_training, color='orange', alpha=0.2, label='Confidence Interval 95%')
+        axs[0].plot(range(len(training_smoothed_duration)), training_smoothed_duration, label='Training Rewards Convolved')
+        axs[0].fill_between(range(len(training_smoothed_duration)), training_smoothed_duration_lower, training_smoothed_duration_upper, color='yellow', alpha=0.2, label='Convolved Reward Confidence Interval 95%')
         axs[0].set_title('Training Phase')
         axs[0].legend()
         axs[0].set_ylabel('Episodes Duration')
         axs[0].set_xlabel('Episodes')
 
         # Plot for test phase
-        axs[1].errorbar(0.4, test_mean, yerr=[test_ci], fmt='o', capsize=5, label='Test Duration', color='green')
-        axs[1].errorbar(0.6, baseline_mean, yerr=[baseline_ci], fmt='o', capsize =5, label='Baseline Duration', color='red')
+        axs[1].errorbar(0.4, res_test_bs.value, yerr=[[res_test_bs.value - lower_ci_test], [upper_ci_test - res_test_bs.value]], fmt='o', capsize=5, label='Test Duration', color='green')
+        axs[1].errorbar(0.6, res_baseline_bs.value, yerr=[[res_baseline_bs.value - lower_ci_baseline], [upper_ci_baseline - res_baseline_bs.value]], fmt='o', capsize =5, label='Baseline Duration', color='red')
         axs[1].set_xticks([])
         axs[1].set_xlim(0, 1)
         axs[1].set_title('Test Phase')

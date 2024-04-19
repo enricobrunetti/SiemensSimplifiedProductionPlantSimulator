@@ -7,27 +7,32 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Dati dei reward per ogni episodio (esempio casuale)
-reward_per_episodio = np.random.rand(1000)  # sostituisci con i tuoi dati reali
+# Curve del limite superiore e inferiore dell'intervallo di confidenza (esempio casuale)
+upper_bound = np.random.rand(1000) + 1  # limite superiore
+lower_bound = np.random.rand(1000)  # limite inferiore
 
-# Riduci il numero di episodi prendendo solo ogni n-esimo episodio
-n = 10  # prendi un episodio ogni 10
-reward_per_episodio_downsampled = reward_per_episodio[::n]
+# Riduci il numero di punti prendendo solo ogni n-esimo punto
+n = 10  # prendi un punto ogni 10
+upper_bound_downsampled = upper_bound[::n]
+lower_bound_downsampled = lower_bound[::n]
+
+# Combina i limiti superiore e inferiore per ottenere l'intervallo di confidenza
+confidence_interval = upper_bound_downsampled - lower_bound_downsampled
 
 # Definisci il kernel per la convoluzione (finestra temporale per la media mobile)
 kernel_size = 10  # dimensione della finestra temporale
 kernel = np.ones(kernel_size) / kernel_size
 
-# Applica la convoluzione per ottenere la media mobile dei reward
-reward_smoothed = np.convolve(reward_per_episodio_downsampled, kernel, mode='valid')
+# Applica la convoluzione all'intervallo di confidenza
+confidence_interval_smoothed = np.convolve(confidence_interval, kernel, mode='valid')
 
 # Plotta i risultati
 plt.figure(figsize=(10, 6))
-plt.plot(reward_per_episodio_downsampled, label='Reward per episodio (dati originali)', alpha=0.5)
-plt.plot(reward_smoothed, label='Reward per episodio (media mobile)', color='red')
+plt.plot(confidence_interval, label='Intervallo di confidenza (dati originali)', alpha=0.5)
+plt.plot(confidence_interval_smoothed, label='Intervallo di confidenza (media mobile)', color='red')
 plt.xlabel('Episodio')
-plt.ylabel('Reward')
-plt.title('Reward per episodio con media mobile (con downsampling)')
+plt.ylabel('Intervallo di confidenza')
+plt.title('Intervallo di confidenza (con media mobile)')
 plt.legend()
 plt.grid(True)
 plt.show()
