@@ -5,35 +5,34 @@ import json
 import math
 
 import numpy as np
-import matplotlib.pyplot as plt
 
-# Curve del limite superiore e inferiore dell'intervallo di confidenza (esempio casuale)
-upper_bound = np.random.rand(1000) + 1  # limite superiore
-lower_bound = np.random.rand(1000)  # limite inferiore
+agents_skills_custom_duration = {
+    "1": {"1": 16},
+    "2": {"1": 8},
+    "3": {"2": 10},
+    "4": {"2": 5},
+    "5": {"7": 13}
+}
 
-# Riduci il numero di punti prendendo solo ogni n-esimo punto
-n = 10  # prendi un punto ogni 10
-upper_bound_downsampled = upper_bound[::n]
-lower_bound_downsampled = lower_bound[::n]
+new_agents_skills_custom_duration = {
+    int(outer_key): {
+        int(inner_key): value 
+        for inner_key, value in inner_dict.items()
+    } 
+    for outer_key, inner_dict in agents_skills_custom_duration.items()
+}
 
-# Combina i limiti superiore e inferiore per ottenere l'intervallo di confidenza
-confidence_interval = upper_bound_downsampled - lower_bound_downsampled
 
-# Definisci il kernel per la convoluzione (finestra temporale per la media mobile)
-kernel_size = 10  # dimensione della finestra temporale
-kernel = np.ones(kernel_size) / kernel_size
+print(new_agents_skills_custom_duration)
 
-# Applica la convoluzione all'intervallo di confidenza
-confidence_interval_smoothed = np.convolve(confidence_interval, kernel, mode='valid')
+current_agent = 5
+action = 8
 
-# Plotta i risultati
-plt.figure(figsize=(10, 6))
-plt.plot(confidence_interval, label='Intervallo di confidenza (dati originali)', alpha=0.5)
-plt.plot(confidence_interval_smoothed, label='Intervallo di confidenza (media mobile)', color='red')
-plt.xlabel('Episodio')
-plt.ylabel('Intervallo di confidenza')
-plt.title('Intervallo di confidenza (con media mobile)')
-plt.legend()
-plt.grid(True)
-plt.show()
+if current_agent in new_agents_skills_custom_duration and action in new_agents_skills_custom_duration[current_agent]:
+    action_time = new_agents_skills_custom_duration[current_agent][action]
+else:
+    action_time = 10000
+
+print(action_time)
+
 

@@ -7,8 +7,6 @@ import numpy as np
 import copy
 
 CONFIG_PATH = "config/simulator_config.json"
-OUTPUT_PATH = "output/TESTFQI"
-TRAJECTORY_PATH = "output/export_trajectories_FQI_NEW_TEST"
 
 with open(CONFIG_PATH) as config_file:
     config = json.load(config_file)
@@ -28,6 +26,10 @@ output_log = config['output_log']
 custom_reward = config['custom_reward']
 supply_action = config['supply_action']
 discount_factor = config['gamma']
+baseline_path = config['baseline_path']
+
+OUTPUT_PATH = config['output_path']
+TRAJECTORY_PATH = config['trajectory_path']
 
 if algorithm != 'random' and algorithm != 'FQI':
     learning_agents, update_values, policy_improvement = initialize_agents(n_agents, algorithm, n_episodes, custom_reward)
@@ -53,7 +55,7 @@ if algorithm != 'random':
             agent.save()
     model_path = learning_agents[0].get_model_name()
 else:
-    model_path = f'models/random_test'
+    model_path = baseline_path
 
 if test_model:
     file_log_name = f"{model_path}/test_logs.txt"
@@ -308,8 +310,6 @@ if test_model:
     performance_log_name = f"{model_path}/test_performance.txt"
 
     if algorithm != 'random':
-        baseline_path = f'models/random_test'
-
         plotter = DistQAndLPIPlotter(model_path, baseline_path)
         plotter.plot_reward_graphs()
         plotter.plot_performance_graph()

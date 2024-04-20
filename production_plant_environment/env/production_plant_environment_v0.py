@@ -13,6 +13,13 @@ class ProductionPlantEnvironment():
         self.n_production_skills = self.config['n_production_skills']
         self.actions = self.config['actions']
         self.action_time = self.config['action_time']
+        self.agents_skills_custom_duration = {
+            int(outer_key): {
+                int(inner_key): value 
+                for inner_key, value in inner_dict.items()
+            } 
+            for outer_key, inner_dict in self.config['agents_skills_custom_duration'].items()
+        }
         self.action_energy = self.config['action_energy']
         self.alpha = self.config['alpha']
         self.beta = self.config['beta']
@@ -56,6 +63,11 @@ class ProductionPlantEnvironment():
         return {'current_agent': self.current_agent, 'time': self.time, 'agents_state': self.agents_state, 'products_state': self.products_state, 'action_mask': self.action_mask, 'agents_busy': self.agents_busy}
 
     def _take_action(self, action):
+        # compute time needed to perform the action (if there is custom one for that agent use it otherwise default one for that specific action)
+        if self.current_agent in self.agents_skills_custom_duration and action in self.agents_skills_custom_duration[self.current_agent]:
+            action_time = self.agents_skills_custom_duration[self.current_agent][action]
+        else:
+            action_time = self.action_time[action]
         # perform production skills
         # # agent with supply skill take a new product and perform supply action
         if action == 0:
@@ -71,11 +83,11 @@ class ProductionPlantEnvironment():
                 self.agents_state[self.supply_agent][next_product] = 1
                 self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
                 self.action_mask[self.supply_agent] = self.compute_mask(self.supply_agent, next_product)
-                self.agents_busy[self.supply_agent] = (1, self.time + self.action_time[action])
+                self.agents_busy[self.supply_agent] = (1, self.time + action_time)
         elif action < self.n_production_skills:
             self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
             self.action_mask[self.current_agent] = self.compute_mask(self.current_agent, np.argmax(self.agents_state[self.current_agent] == 1))
-            self.agents_busy[self.current_agent] = (1, self.time + self.action_time[action])
+            self.agents_busy[self.current_agent] = (1, self.time + action_time)
         # perform transfer actions
         elif action < self.n_production_skills+4:
             next_agent = self.agents_connections[self.current_agent][action - self.n_production_skills]
@@ -83,9 +95,9 @@ class ProductionPlantEnvironment():
             self.agents_state[self.current_agent] = np.zeros_like(self.agents_state[self.current_agent])
             self.action_mask[self.current_agent] = np.zeros_like(self.action_mask[self.current_agent])
             self.action_mask[next_agent] = self.compute_mask(next_agent, np.argmax(self.agents_state[next_agent] == 1))
-            self.agents_busy[next_agent] = (1, self.time + self.action_time[action])
+            self.agents_busy[next_agent] = (1, self.time + action_time)
         elif action == self.n_production_skills+4:
-            self.agents_busy[self.current_agent] = (1, self.time + self.action_time[action])
+            self.agents_busy[self.current_agent] = (1, self.time + action_time)
         # all the actions have been masked -> no action available (agent standby)
         else:
             pass
@@ -101,7 +113,7 @@ class ProductionPlantEnvironment():
             self.time += 1
 
         # return as reward the execution time of the action
-        return self.action_time[action] * self.alpha + self.action_energy[action] * self.beta
+        return action_time * self.alpha + self.action_energy[action] * self.beta
 
     def step(self, action):
         reward = self._take_action(action)
