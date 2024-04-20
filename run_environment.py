@@ -101,11 +101,14 @@ for episode in range(n_episodes):
                 # update exploration probability basing on episode
                 agent.update_exploration_prob(test_model, episode + 1)
 
+    if custom_reward == 'reward5':
+        trajectory_for_semi_MDP = []
+
     state = env.reset()
     old_state = copy.deepcopy(state)
 
     for step in range(num_max_steps):
-        if output_log:
+        if output_log and custom_reward != 'reward5':
             with open(f"{OUTPUT_PATH}_{episode}.txt", 'a') as file:
                 file.write(f"***************Episode{episode}***************\n")
                 file.write(f"***************Step{step}***************\n")
@@ -154,15 +157,14 @@ for episode in range(n_episodes):
                     obs = get_FQI_state({'agents_state': state['agents_state'].copy(), 'products_state': state['products_state'].copy()}, agent.get_observable_neighbours(), n_products)
                     mask = state['action_mask'][state['current_agent']][n_production_skills:-1]
                     action = agent.select_action(obs, mask)
-                    '''print("*****")
-                    print(old_state['products_state'])
-                    print(action)
-                    print("*****")'''
 
         state, reward, done, _ = env.step(action)
 
         if (custom_reward == 'reward3' or custom_reward == 'reward4') and action == supply_action:
             n_supplied_products += 1
+
+        if custom_reward == 'reward5':
+            trajectory_for_semi_MDP.append({'step': step, 'old_state': old_state, 'action': action, 'reward': reward, 'new_state': state, 'action_selected_by_algorithm': action_selected_by_algorithm})
 
         if action_selected_by_algorithm:
             agent_num = old_state['current_agent']
@@ -192,11 +194,12 @@ for episode in range(n_episodes):
 
             agents_rewards[agent_num].append(reward)
             # check: verifica se è corretto old_state
-            agents_rewards_for_plot[agent_num] += np.power(discount_factor,  old_state['time']) * reward
+            if custom_reward != 'reward5':
+                agents_rewards_for_plot[agent_num] += np.power(discount_factor,  old_state['time']) * reward
 
             if algorithm != 'random':
                 agent = learning_agents[agent_num]
-            if not test_model and algorithm == 'DistQ':
+            if not test_model and not custom_reward == 'reward5' and algorithm == 'DistQ':
                 next_agent_num = agent.get_next_agent_number(action)
                 next_agent = learning_agents[next_agent_num]
 
@@ -206,7 +209,7 @@ for episode in range(n_episodes):
                 if update_values == 'step':
                     agent.apply_values_update()
 
-            elif not test_model and algorithm == 'LPI':
+            elif not test_model and not custom_reward == 'reward5' and algorithm == 'LPI':
                 if agent_num not in observations_history_LPI.keys():
                     observations_history_LPI[agent_num] = {}
                     observations_history_LPI[agent_num]['O'] = []
@@ -227,7 +230,7 @@ for episode in range(n_episodes):
                         agent.apply_values_update()
             
             if algorithm != 'random':
-                if not test_model and policy_improvement == 'step':
+                if not test_model and not custom_reward == 'reward5' and policy_improvement == 'step':
                     agent.soft_policy_improvement()
             
             with open(file_log_name, 'a') as file:
@@ -239,7 +242,7 @@ for episode in range(n_episodes):
                         break
                 file.write(f"Agent {source_agent} transfer product {product} to agent {dest_agent} (action: {action})\n")
                 
-        if output_log:
+        if output_log and custom_reward != 'reward5':
             with open(f"{OUTPUT_PATH}_{episode}.txt", 'a') as file:
                 file.write(f"Step: {step}, Action: {action}, Reward: {reward}, Done: {done}\n\n")
 
@@ -265,6 +268,73 @@ for episode in range(n_episodes):
         if done:
             print(f"The episode {episode+1}/{n_episodes} is finished.")
             break
+
+    # semi MDP reward postponed computation (at the end of the episode)
+    if custom_reward == 'reward5':
+        for actual_step in range(len(trajectory_for_semi_MDP) - 1):
+            if trajectory_for_semi_MDP[actual_step]['action_selected_by_algorithm']:
+                current_agent = trajectory_for_semi_MDP[actual_step]['old_state']['current_agent']
+                actual_time = trajectory_for_semi_MDP[actual_step]['old_state']['time']
+                next_step = actual_step + 1
+                while next_step < (len(trajectory_for_semi_MDP) - 1) and trajectory_for_semi_MDP[next_step]['old_state']['agents_state'][current_agent][0] != 1:
+                    next_step += 1
+                next_time = trajectory_for_semi_MDP[next_step]['old_state']['time']
+                trajectory_for_semi_MDP[actual_step]['reward'] = next_time - actual_time
+
+        # semi MDP reward postponed update values (at the end of the episode)
+        if not test_model and custom_reward == 'reward5' and algorithm == 'DistQ':
+            for actual_step in trajectory_for_semi_MDP:
+                if actual_step['action_selected_by_algorithm']:
+                    agent = learning_agents[actual_step['old_state']['current_agent']]
+                    action = actual_step['action']
+                    reward = actual_step['reward']
+                    next_agent_num = agent.get_next_agent_number(action)
+                    next_agent = learning_agents[next_agent_num]
+
+                    agents_informations = next_agent.get_max_value(get_agent_state_and_product_skill_observation_DISTQ_online(next_agent_num, actual_step['new_state']))
+                    obs = get_agent_state_and_product_skill_observation_DISTQ_online(agent_num, actual_step['old_state'])
+                    agent.update_values(obs, action, reward, agents_informations)
+
+        elif not test_model and custom_reward == 'reward5' and algorithm == 'LPI':
+            for actual_step in trajectory_for_semi_MDP:
+                if actual_step['action_selected_by_algorithm']:
+                    agent_num = actual_step['old_state']['current_agent']
+                    action = actual_step['action']
+                    reward = actual_step['reward']
+                    if agent_num not in observations_history_LPI.keys():
+                        observations_history_LPI[agent_num] = {}
+                        observations_history_LPI[agent_num]['O'] = []
+                        observations_history_LPI[agent_num]['A'] = []
+                        observations_history_LPI[agent_num]['R'] = []
+
+                    observations_history_LPI[agent_num]['O'].append(agent.generate_observation(actual_step['old_state']))
+                    observations_history_LPI[agent_num]['A'].append(action)
+                    observations_history_LPI[agent_num]['R'].append(reward)
+
+                    if len(observations_history_LPI[agent_num]['O']) > 1:
+                        agent.update_values(observations_history_LPI[agent_num]['O'][-2], \
+                                            observations_history_LPI[agent_num]['A'][-2], \
+                                            observations_history_LPI[agent_num]['R'][-2], \
+                                            observations_history_LPI[agent_num]['O'][-1], \
+                                            observations_history_LPI[agent_num]['A'][-1])
+                        
+        # semiMDP agents reward for plot
+        for actual_step in trajectory_for_semi_MDP:
+            if actual_step['action_selected_by_algorithm']:
+                agents_rewards_for_plot[actual_step['old_state']['current_agent']] += np.power(discount_factor,  actual_step['old_state']['time']) * actual_step['reward']
+                        
+        # semiMDP output log
+        if output_log:
+            with open(f"{OUTPUT_PATH}_{episode}.txt", 'a') as file:
+                for actual_step in trajectory_for_semi_MDP:
+                    file.write(f"***************Episode{episode}***************\n")
+                    file.write(f"***************Step{actual_step['step']}***************\n")
+                    file.write(f"Time: {actual_step['old_state']['time']}, Current agent: {actual_step['old_state']['current_agent']}\n")
+                    file.write(f"Agents busy: {actual_step['old_state']['agents_busy']}\n")
+                    file.write(f"Agents state: \n{actual_step['old_state']['agents_state']}\n")
+                    file.write(f"Products state: \n{actual_step['old_state']['products_state']}\n")
+                    file.write(f"Action mask: \n{actual_step['old_state']['action_mask']}\n")
+                    file.write(f"Step: {step}, Action: {actual_step['action']}, Reward: {actual_step['reward']}\n\n")
 
     if algorithm != 'random':
         if not test_model and update_values == 'episode':
