@@ -49,7 +49,7 @@ class ProductionPlantEnvironment():
 
         for agent in range(self.n_agents):
             self.action_mask[agent] = np.array([0 for _ in range(len(self.actions))])
-        self.action_mask[self.current_agent][0] = 1
+        self.action_mask[self.supply_agent][0] = 1
 
         # agents state
         self.agents_state = np.array(self.config['agents_starting_state'])

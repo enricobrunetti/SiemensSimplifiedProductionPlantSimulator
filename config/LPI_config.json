@@ -1,6 +1,6 @@
 {
     "algorithm": "LPI",
-    "actions_policy": "eps-greedy",
+    "actions_policy": "softmax",
     "initial_exploration_prob": 0.8,
     "min_exploration_prob": 0.2,
     "update_values": "episode",
