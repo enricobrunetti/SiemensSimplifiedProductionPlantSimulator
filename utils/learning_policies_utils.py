@@ -7,15 +7,16 @@ LPI_CONFIG_PATH = "config/LPI_config.json"
 FQI_CONFIG_PATH = "config/FQI_config.json"
 
 # given number of agents and algorithm return a list of istances of agents of that specific algorithm
-def initialize_agents(n_agents, algorithm, n_episodes, reward_type):
+def initialize_agents(n_agents, algorithm, n_episodes, reward_type, available_actions, agents_connections):
+    model_units_folder = f'{n_agents}_units'
     if algorithm == "DistQ":
         with open(DIST_Q_CONFIG_PATH) as config_file:
             config = json.load(config_file)
-        return [DistributedQLearningAgent(config, i, n_episodes, reward_type) for i in range(n_agents)], config['update_values'], config['policy_improvement']
+        return [DistributedQLearningAgent(config, model_units_folder, i, n_episodes, reward_type, available_actions, agents_connections) for i in range(n_agents)], config['update_values'], config['policy_improvement']
     elif algorithm == "LPI":
         with open(LPI_CONFIG_PATH) as config_file:
             config = json.load(config_file)
-        return [LPIAgent(config, i, n_episodes, reward_type) for i in range(n_agents)], config['update_values'], config['policy_improvement']
+        return [LPIAgent(config, model_units_folder, i, n_episodes, reward_type, available_actions, agents_connections) for i in range(n_agents)], config['update_values'], config['policy_improvement']
     elif algorithm == "FQI":
         with open(FQI_CONFIG_PATH) as config_file:
             config = json.load(config_file)

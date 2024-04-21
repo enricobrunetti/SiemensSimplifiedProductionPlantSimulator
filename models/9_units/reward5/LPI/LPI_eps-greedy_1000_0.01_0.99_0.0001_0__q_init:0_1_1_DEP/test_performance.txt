@@ -1,0 +1,144 @@
+Min time to complete: 120
+Avg time to complete: 418.8
+Max time to complete: 1144
+Variance of time to complete: 118462.55999999998
+Agent 0 mean reward: 84.42289362407003
+Agent 1 mean reward: 63.69529370343896
+Agent 2 mean reward: 76.63384585771848
+Agent 3 mean reward: 72.45454292503851
+Agent 4 mean reward: 76.77886785321941
+Agent 5 mean reward: 0.0
+Agent 6 mean reward: 50.58173549627671
+Agent 7 mean reward: 52.16570594099981
+Agent 8 mean reward: 68.86072507073737
+
+****Episode 1****
+Mean reward:
+Agent 0: 85.26416259695074
+Agent 1: 65.8771107889837
+Agent 2: 0.0
+Agent 3: 75.6672368776152
+Agent 4: 50.74156020449829
+Agent 5: 0.0
+Agent 6: 52.85391567795561
+Agent 7: 50.93076358073894
+Agent 8: 49.04076410005554
+Time to complete: 228
+
+****Episode 2****
+Mean reward:
+Agent 0: 73.49636655337655
+Agent 1: 53.39501591683572
+Agent 2: 0.0
+Agent 3: 63.92720645012993
+Agent 4: 73.01635423062174
+Agent 5: 0.0
+Agent 6: 41.06318136102868
+Agent 7: 38.7191899620521
+Agent 8: 15.523184168939656
+Time to complete: 144
+
+****Episode 3****
+Mean reward:
+Agent 0: 96.43605309374912
+Agent 1: 75.65306722719674
+Agent 2: 240.90080592359357
+Agent 3: 85.4976479753096
+Agent 4: 95.3687264104675
+Agent 5: 0.0
+Agent 6: 65.26787070909387
+Agent 7: 61.860001561538
+Agent 8: 1.606255277309363
+Time to complete: 864
+
+****Episode 4****
+Mean reward:
+Agent 0: 95.63333233849379
+Agent 1: 74.1250647412048
+Agent 2: 120.56802411456692
+Agent 3: 87.7697780391217
+Agent 4: 96.31741654949077
+Agent 5: 0.0
+Agent 6: 62.20914879701581
+Agent 7: 60.44943954690441
+Agent 8: 35.42813824373391
+Time to complete: 656
+
+****Episode 5****
+Mean reward:
+Agent 0: 74.16952368213072
+Agent 1: 52.2760018529961
+Agent 2: 0.0
+Agent 3: 64.06802071002186
+Agent 4: 73.53882594113057
+Agent 5: 0.0
+Agent 6: 39.01089973787912
+Agent 7: 36.6446822678946
+Agent 8: 53.906040581954485
+Time to complete: 142
+
+****Episode 6****
+Mean reward:
+Agent 0: 95.26190768709732
+Agent 1: 75.72048136776452
+Agent 2: 0.0
+Agent 3: 84.99583026667942
+Agent 4: 95.00259245068777
+Agent 5: 0.0
+Agent 6: 63.114101322697984
+Agent 7: 62.199634007342816
+Agent 8: 179.36197837128475
+Time to complete: 518
+
+****Episode 7****
+Mean reward:
+Agent 0: 97.79944934237457
+Agent 1: 72.81149871050214
+Agent 2: 399.9963249361301
+Agent 3: 87.62529101128128
+Agent 4: 93.87819183554353
+Agent 5: 0.0
+Agent 6: 61.0680186931636
+Agent 7: 92.81046781702588
+Agent 8: 231.51744205752306
+Time to complete: 1144
+
+****Episode 8****
+Mean reward:
+Agent 0: 91.20726205869488
+Agent 1: 68.8477901345967
+Agent 2: 0.0
+Agent 3: 80.44037275084295
+Agent 4: 89.99137471206247
+Agent 5: 0.0
+Agent 6: 52.304916892976
+Agent 7: 51.92483790507141
+Agent 8: 122.223447906573
+Time to complete: 250
+
+****Episode 9****
+Mean reward:
+Agent 0: 66.317350489023
+Agent 1: 53.308431740447055
+Agent 2: 0.0
+Agent 3: 36.90697441818624
+Agent 4: 34.551729172420934
+Agent 5: 0.0
+Agent 6: 36.653997694710014
+Agent 7: 35.2283969116004
+Agent 8: 0.0
+Time to complete: 122
+
+****Episode 10****
+Mean reward:
+Agent 0: 68.64352839880968
+Agent 1: 44.93847455386212
+Agent 2: 4.873303602894188
+Agent 3: 57.64707075119705
+Agent 4: 65.38190702527055
+Agent 5: 0.0
+Agent 6: 32.27130407624633
+Agent 7: 30.889645849829577
+Agent 8: 0.0
+Time to complete: 120
+

@@ -32,7 +32,7 @@ OUTPUT_PATH = config['output_path']
 TRAJECTORY_PATH = config['trajectory_path']
 
 if algorithm != 'random' and algorithm != 'FQI':
-    learning_agents, update_values, policy_improvement = initialize_agents(n_agents, algorithm, n_episodes, custom_reward)
+    learning_agents, update_values, policy_improvement = initialize_agents(n_agents, algorithm, n_episodes, custom_reward, config['available_actions'], config['agents_connections'])
 elif algorithm == 'FQI':
     learning_agents = initialize_agents(n_agents, algorithm, n_episodes, custom_reward)
 
@@ -299,6 +299,7 @@ for episode in range(n_episodes):
             for actual_step in trajectory_for_semi_MDP:
                 if actual_step['action_selected_by_algorithm']:
                     agent_num = actual_step['old_state']['current_agent']
+                    agent = learning_agents[agent_num]
                     action = actual_step['action']
                     reward = actual_step['reward']
                     if agent_num not in observations_history_LPI.keys():
@@ -353,7 +354,7 @@ for episode in range(n_episodes):
     performance[episode]['agents_reward_for_plot'] = agents_rewards_for_plot
 
     for i in range(n_agents):
-        mean_reward = np.mean(agents_rewards[i])
+        mean_reward = np.mean(agents_rewards_for_plot[i])
         reward_visualizer.update_plot(i, episode, mean_reward)
 
         performance[episode][i] = {}

@@ -9,15 +9,15 @@ import json
 import os
 
 class LearningAgent:
-    def __init__(self, config, agent_num, n_training_episodes, reward_type):
+    def __init__(self, config, model_units_folder, agent_num, n_training_episodes, reward_type, available_actions, agents_connections):
         self.algorithm = config['algorithm']
         self.agent_num = agent_num
         self.n_training_episodes = n_training_episodes
         self.reward_type = reward_type
-        self.actions = config['available_actions']
-        self.actions_space = len(config['available_actions'])
+        self.actions = available_actions
+        self.actions_space = len(available_actions)
         self.n_products = config['n_products']
-        self.agents_connections = {int(k): v for k, v in config['agents_connections'].items()}
+        self.agents_connections = {int(k): v for k, v in agents_connections.items()}
 
         self.alpha = config['alpha']
         self.gamma = config['gamma']
@@ -46,7 +46,7 @@ class LearningAgent:
         self.exploration_prob_decreasing_factor = np.round((self.initial_exploration_prob - self.min_exploration_prob) / 10, 2)
         self.exploration_prob = self.initial_exploration_prob
 
-        self.model_name = f'models/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}_q_init:{self.default_q_value}'
+        self.model_name = f'models/{model_units_folder}/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}_q_init:{self.default_q_value}'
         if config['actions_policy'] == "softmax":
             self.model_name += f'_{self.p_max}'
         elif config['actions_policy'] == "eps-greedy":
@@ -123,8 +123,8 @@ class LearningAgent:
         return self.gamma
 
 class DistributedQLearningAgent(LearningAgent):
-    def __init__(self, config, agent_num, n_training_episodes, reward_type):
-        super().__init__(config, agent_num, n_training_episodes, reward_type)
+    def __init__(self, config, model_units_folder, agent_num, n_training_episodes, reward_type, available_actions, agents_connections):
+        super().__init__(config, model_units_folder, agent_num, n_training_episodes, reward_type, available_actions, agents_connections)
 
     def update_values(self, observation, action, reward, agents_information):
         action = action - self.actions[0]
@@ -172,8 +172,8 @@ class DistributedQLearningAgent(LearningAgent):
         return np.max(self.values[observation]['Q'])
 
 class LPIAgent(LearningAgent):
-    def __init__(self, config, agent_num, n_training_episodes, reward_type):
-        super().__init__(config, agent_num, n_training_episodes, reward_type)
+    def __init__(self, config, model_units_folder, agent_num, n_training_episodes, reward_type, available_actions, agents_connections):
+        super().__init__(config, model_units_folder, agent_num, n_training_episodes, reward_type, available_actions, agents_connections)
 
         self.beta = config['beta']
         self.kappa = config['kappa']
@@ -181,7 +181,7 @@ class LPIAgent(LearningAgent):
         self.neighbours_kappa = self.get_n_hop_neighbours(self.kappa)
         self.neighbours_beta = self.get_n_hop_neighbours(self.beta)
 
-        self.model_name = f'models/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}__q_init:{self.default_q_value}_{self.beta}_{self.kappa}'
+        self.model_name = f'models/{model_units_folder}/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.actions_policy}_{self.n_training_episodes}_{self.alpha}_{self.gamma}_{self.eta}_{self.tau}__q_init:{self.default_q_value}_{self.beta}_{self.kappa}'
         if config['actions_policy'] == "softmax":
             self.model_name += f'_{self.p_max}'
         elif config['actions_policy'] == "eps-greedy":
