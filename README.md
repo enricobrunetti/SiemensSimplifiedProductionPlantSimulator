@@ -37,4 +37,48 @@ If you need to run a simulation in order to train a model the first thing to do 
 * ``observability_grade``: not relevant for the moment.
 * ``gamma``: discount factor.
 
-Then, in order to launch the training it is needed to execute the ``run_environment.py`` file.
+At this point we need to set the parameters of the model we choose to use.
+#### DistQ
+If our choice is **DistQ** we need to open the ``DistQ_config.json`` file. Here a quick overview of his parameters:
+* ``algorithm``: it is the name of the algorithm.
+* ``actions_policy``: actually there are to action policies implemented so it can be set as **eps-greedy** or **softmax**.
+* ``initial_exploration_prob`` and ``min_exploration_prob``: if **eps-greedy** actions policy is choosen, then the **epsilon** parameter will decrease gradually during the course of the training phase. So with these two parameters you can set from which value of epsilon start and to which value of epsilon end the training.
+* ``update_values``: this parameter allow to set if update the q_values of *DistQ* or *LPI* at each **step** or at each **episode**.
+* ``policy_improvement``: this parameter allow to set if perform a soft policy improvement step of *DistQ* or *LPI* at each **step** or at each **episode**. **NOTE:** it is relevant only if you have a **softmax** *actions_policy*.
+* ``q_value_init``: this parameter allows to set the default initialization value for the q_table. You can either specify a value or specify **null** if you want to use default: $-\frac{\verb|n_products|}{1 - \gamma}.
+* ``p_max``: this parameter allows to set the number of times you want to perform the soft policy improvement every time it is called.
+* ``n_products``: this parameter set the number of products of the simulation.
+* ``alpha``: values learning rate.
+* ``gamma``: dicount factor.
+* ``eta``: policy learning rate.
+#### LPI
+If our choice is **LPI** we need to open the ``LPI_config.json`` file. Here a quick overview of his parameters:
+* ``algorithm``: it is the name of the algorithm.
+* ``actions_policy``: actually there are to action policies implemented so it can be set as **eps-greedy** or **softmax**.
+* ``initial_exploration_prob`` and ``min_exploration_prob``: if **eps-greedy** actions policy is choosen, then the **epsilon** parameter will decrease gradually during the course of the training phase. So with these two parameters you can set from which value of epsilon start and to which value of epsilon end the training.
+* ``update_values``: this parameter allow to set if update the q_values of *DistQ* or *LPI* at each **step** or at each **episode**.
+* ``policy_improvement``: this parameter allow to set if perform a soft policy improvement step of *DistQ* or *LPI* at each **step** or at each **episode**. **NOTE:** it is relevant only if you have a **softmax** *actions_policy*.
+* ``q_value_init``: this parameter allows to set the default initialization value for the q_table. You can either specify a value or specify **null** if you want to use default: $-\frac{\verb|n_products|}{1 - \gamma}.
+* ``p_max``: this parameter allows to set the number of times you want to perform the soft policy improvement every time it is called.
+* ``n_products``: this parameter set the number of products of the simulation.
+* ``alpha``: values learning rate.
+* ``gamma``: dicount factor.
+* ``beta`` and ``kappa``: select the grade of observability used by LPI to build observations. E.g. *0 you see only your state, 1 you can observe also yours one step neighbours, ecc*. **NOTE:** for the actual implementation of LPI *beta* and *kappa* have the same values. Refer to LPI paper for a theoretical explaination of their meanings.
+* ``eta``: policy learning rate.
+
+Then, in order to launch the training you need to execute the ``run_environment.py`` file. During the training inside the model folder a folder with the main parameters of the model as name is created. All the files for the model are saved inside this folder.
+
+### Test
+If you have trained a model and you want to evaluate it you have to follow some steps:
+1. The first thing to do is to open che config file of your model, e.g. ``LPI_config.json`` and make sure to set the same parameters of the model that you want to test.
+2. At this poin open the ``simulator_config.json`` file and make sure to set the following parameters:
+    * ``algorithm``: this parameter refers to the algorithm used for the test. Avaiable options are **random**, **DistQ**, **LPI** and **FQI** (soon full working).
+    * ``test_model``: this is a boolean parameter and in order to make an evaluation you have to set it as **true**.
+    * ``test_model_name``: here you have to put the relative path of the folder with the name of the model that you want to test.
+    * ``baseline_path``: this parameter has to be setted with the baseline path for the model that we wanto to traing, e.g. **"models/20_units/random_baseline"**.
+    * ``test_model_n_episodes``: number of episodes on which execute the evaluation.
+    * ``export_trajectories``: this parameter can be setted as **true** or **false**. If it is **true** the trajectories of the training will be saved in a **json** file. **NOTE**: this will slow down the training process a lot. Furthermore if you set it as **true** you will need to specify a path for the trajectories in ``trajectory_path``.
+    * ``output_log``: this parameter can be setted as **true** or **false**. If it is **true** the output of the training (representation of the state for each step) will be saved in a **txt** file. **NOTE:** this will slow down the training process a lot. Furthermore if you set it as **true** you will need to specify a path for the output files (will be one file for each episode) in ``output_path``.
+3. All the other parameters of the file ``simulator_config.json`` must be the same as the ones used for model training.
+4. At this point you need to execute the ``run_environment.py`` file. When the evaluation is ended you will find all the reward and performance graphs in the folder of the model you evaluated.
+
