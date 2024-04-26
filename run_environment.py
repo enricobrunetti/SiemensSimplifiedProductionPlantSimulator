@@ -2,6 +2,7 @@ from production_plant_environment.env.production_plant_environment_v0 import Pro
 from utils.learning_policies_utils import initialize_agents, get_agent_state_and_product_skill_observation_DISTQ_online
 from utils.fqi_utils import get_FQI_state
 from utils.graphs_utils import DistQAndLPIPlotter
+from utils.run_environment_utils import get_next_agent_number
 import json
 import numpy as np
 import copy
@@ -28,6 +29,16 @@ output_log = config['output_log']
 custom_reward = config['custom_reward']
 supply_action = config['supply_action']
 discount_factor = config['gamma']
+action_time = config['action_time']
+agents_skills_custom_duration = {
+    int(outer_key): {
+        int(inner_key): value 
+        for inner_key, value in inner_dict.items()
+    } 
+    for outer_key, inner_dict in config['agents_skills_custom_duration'].items()
+}
+available_actions = config['available_actions']
+agents_connections = {int(k): v for k, v in config['agents_connections'].items()}
 baseline_path = config['baseline_path']
 
 OUTPUT_PATH = config['output_path']
@@ -260,7 +271,7 @@ for run in range(n_runs):
                 with open(f"{OUTPUT_PATH}_run{run}_{episode}.txt", 'a') as file:
                     file.write(f"Step: {step}, Action: {action}, Reward: {reward}, Done: {done}\n\n")
 
-            if export_trajectories:
+            if export_trajectories and custom_reward != 'reward5':
                 # update trajectory
                 if action != nothing_action:
                     with open(f"{TRAJECTORY_PATH}_run{run}_{episode}.json", 'r') as infile:
@@ -289,11 +300,28 @@ for run in range(n_runs):
                 if trajectory_for_semi_MDP[actual_step]['action_selected_by_algorithm']:
                     current_agent = trajectory_for_semi_MDP[actual_step]['old_state']['current_agent']
                     actual_time = trajectory_for_semi_MDP[actual_step]['old_state']['time']
+                    actual_action = trajectory_for_semi_MDP[actual_step]['action']
                     next_step = actual_step + 1
                     while next_step < (len(trajectory_for_semi_MDP) - 1) and trajectory_for_semi_MDP[next_step]['old_state']['agents_state'][current_agent][0] != 1:
                         next_step += 1
                     next_time = trajectory_for_semi_MDP[next_step]['old_state']['time']
-                    trajectory_for_semi_MDP[actual_step]['reward'] = next_time - actual_time
+                    trajectory_for_semi_MDP[actual_step]['reward'] = -1 * (next_time - actual_time)
+                    if algorithm != 'random':
+                        next_agent = learning_agents[current_agent].get_next_agent_number(actual_action)
+                    else:
+                        next_agent = get_next_agent_number(current_agent, actual_action, available_actions, agents_connections)
+                    for check_positive_shaping_step in range(len(trajectory_for_semi_MDP) - actual_step - 1):
+                        if trajectory_for_semi_MDP[actual_step + check_positive_shaping_step + 1]['old_state']['current_agent'] == next_agent:
+                            next_agent_action = trajectory_for_semi_MDP[actual_step + check_positive_shaping_step + 1]['action']
+                            if next_agent_action != nothing_action:
+                                if next_agent_action < n_production_skills:
+                                    if next_agent in agents_skills_custom_duration and next_agent_action in agents_skills_custom_duration[next_agent]:
+                                        next_agent_action_time = agents_skills_custom_duration[next_agent][next_agent_action]
+                                    else:
+                                        next_agent_action_time = action_time[next_agent_action]
+                                    trajectory_for_semi_MDP[actual_step]['reward'] = next_agent_action_time
+                                break
+
 
             # semi MDP reward postponed update values (at the end of the episode)
             if not test_model and custom_reward == 'reward5' and algorithm == 'DistQ':
@@ -350,6 +378,24 @@ for run in range(n_runs):
                         file.write(f"Products state: \n{actual_step['old_state']['products_state']}\n")
                         file.write(f"Action mask: \n{actual_step['old_state']['action_mask']}\n")
                         file.write(f"Step: {step}, Action: {actual_step['action']}, Reward: {actual_step['reward']}\n\n")
+
+            # semiMDP export trajectories
+            if export_trajectories:
+                with open(f"{TRAJECTORY_PATH}_run{run}_{episode}.json", 'r') as infile:
+                    trajectories = json.load(infile)
+                
+                for actual_step in trajectory_for_semi_MDP:
+                    if actual_step['action'] != nothing_action:
+                        state_to_save = copy.deepcopy(actual_step['old_state'])
+                        del state_to_save['time'], state_to_save['current_agent'], state_to_save['agents_busy']
+                        state_to_save['action_mask'] = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in state_to_save['action_mask'].items()}
+                        state_to_save = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in state_to_save.items()}
+                        trajectory_update = {'time': int(actual_step['old_state']['time']), 'agent': int(actual_step['old_state']['current_agent']), 'state': state_to_save, 'action': int(actual_step['action']), 'reward': int(actual_step['reward'])}
+                        current_product = np.argmax(state['agents_state'][old_state['current_agent']]) if action == 0 else np.argmax(old_state['agents_state'][old_state['current_agent']])
+                        trajectories[f"Episode {episode}, Product {current_product}"].append(trajectory_update)
+                
+                with open(f"{TRAJECTORY_PATH}_run{run}_{episode}.json", 'w') as outfile:
+                    json.dump(trajectories, outfile, indent=6)
 
         if algorithm != 'random':
             if not test_model and update_values == 'episode':

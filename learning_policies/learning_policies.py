@@ -96,6 +96,12 @@ class LearningAgent:
             prob_values = policy_values / np.sum(policy_values)
             print(f'actions: {allowed_actions}, prob_values: {prob_values}')
             return np.random.choice(allowed_actions, p=prob_values)
+        
+    def get_next_agent_number(self, action):
+        action -= self.actions[0]
+        if action == 4:
+            return self.agent_num
+        return self.agents_connections[self.agent_num][action] 
     
     def save(self):
         model_agent_path = f'{self.model_name}/{self.agent_num}.json'
@@ -157,13 +163,7 @@ class DistributedQLearningAgent(LearningAgent):
                     curr_value = self.policy[state]
                     sum_curr_value = np.sum(curr_value)
                     new_value = (curr_value ** (1 - lr_policy * self.tau) / sum_curr_value) * np.exp(lr_policy * np.array(self.values[state]['Q']))
-                    self.policy[state] = np.round(new_value, 3)
-            
-    def get_next_agent_number(self, action):
-        action -= self.actions[0]
-        if action == 4:
-            return self.agent_num
-        return self.agents_connections[self.agent_num][action]    
+                    self.policy[state] = np.round(new_value, 3)   
 
     def get_random_action(self, allowed_actions):
         return np.random.choice(allowed_actions)
