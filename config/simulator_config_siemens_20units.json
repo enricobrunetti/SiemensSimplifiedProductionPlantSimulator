@@ -10,6 +10,7 @@
     "output_path": "output/20_units_siemens_random_test",
     "n_agents": 20,
     "n_products": 1,
+    "n_runs": 5,
     "n_episodes": 1000,
     "n_production_skills": 10,
     "actions": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],

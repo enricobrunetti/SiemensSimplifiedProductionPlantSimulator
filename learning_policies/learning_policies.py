@@ -9,8 +9,9 @@ import json
 import os
 
 class LearningAgent:
-    def __init__(self, config, model_units_folder, agent_num, n_training_episodes, reward_type, available_actions, agents_connections):
+    def __init__(self, config, model_units_folder, run_num, agent_num, n_training_episodes, reward_type, available_actions, agents_connections):
         self.algorithm = config['algorithm']
+        self.run_num = run_num
         self.agent_num = agent_num
         self.n_training_episodes = n_training_episodes
         self.reward_type = reward_type
@@ -52,6 +53,7 @@ class LearningAgent:
         elif config['actions_policy'] == "eps-greedy":
             # DEP = decreasing exploration probability
             self.model_name += f'_DEP'
+        self.model_name += f'/run{self.run_num}'
 
     def apply_values_update(self):
         self.values = self.values_updated
@@ -123,8 +125,8 @@ class LearningAgent:
         return self.gamma
 
 class DistributedQLearningAgent(LearningAgent):
-    def __init__(self, config, model_units_folder, agent_num, n_training_episodes, reward_type, available_actions, agents_connections):
-        super().__init__(config, model_units_folder, agent_num, n_training_episodes, reward_type, available_actions, agents_connections)
+    def __init__(self, config, model_units_folder, run_num, agent_num, n_training_episodes, reward_type, available_actions, agents_connections):
+        super().__init__(config, model_units_folder, run_num, agent_num, n_training_episodes, reward_type, available_actions, agents_connections)
 
     def update_values(self, observation, action, reward, agents_information):
         action = action - self.actions[0]
@@ -172,8 +174,8 @@ class DistributedQLearningAgent(LearningAgent):
         return np.max(self.values[observation]['Q'])
 
 class LPIAgent(LearningAgent):
-    def __init__(self, config, model_units_folder, agent_num, n_training_episodes, reward_type, available_actions, agents_connections):
-        super().__init__(config, model_units_folder, agent_num, n_training_episodes, reward_type, available_actions, agents_connections)
+    def __init__(self, config, model_units_folder, run_num, agent_num, n_training_episodes, reward_type, available_actions, agents_connections):
+        super().__init__(config, model_units_folder, run_num, agent_num, n_training_episodes, reward_type, available_actions, agents_connections)
 
         self.beta = config['beta']
         self.kappa = config['kappa']
@@ -187,6 +189,7 @@ class LPIAgent(LearningAgent):
         elif config['actions_policy'] == "eps-greedy":
             # DEP = decreasing exploration probability
             self.model_name += f'_DEP'
+        self.model_name += f'/run{self.run_num}'
 
     def get_n_hop_neighbours(self, n_hop):
         neighbour = set()
