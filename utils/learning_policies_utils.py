@@ -5,10 +5,15 @@ import json
 DIST_Q_CONFIG_PATH = "config/DistQ_config.json"
 LPI_CONFIG_PATH = "config/LPI_config.json"
 FQI_CONFIG_PATH = "config/FQI_config.json"
+SEMI_MDP_CONFIG_PATH = "config/semiMDP_reward_config.json"
 
 # given number of agents and algorithm return a list of istances of agents of that specific algorithm
 def initialize_agents(n_agents, algorithm, run_num, n_episodes, reward_type, available_actions, agents_connections):
     model_units_folder = f'{n_agents}_units'
+    if reward_type == 'reward5':
+        with open(SEMI_MDP_CONFIG_PATH) as config_file:
+            semiMDP_reward_config = json.load(config_file)
+        reward_type += f"/{semiMDP_reward_config['positive_shaping']}_{semiMDP_reward_config['positive_shaping_constant']}_{semiMDP_reward_config['negative_shaping']}_{semiMDP_reward_config['negative_shaping_constant']}"
     if algorithm == "DistQ":
         with open(DIST_Q_CONFIG_PATH) as config_file:
             config = json.load(config_file)
@@ -20,7 +25,7 @@ def initialize_agents(n_agents, algorithm, run_num, n_episodes, reward_type, ava
     elif algorithm == "FQI":
         with open(FQI_CONFIG_PATH) as config_file:
             config = json.load(config_file)
-        return [FQIAgent(config, i, n_episodes, reward_type) for i in range(n_agents)]
+        return [FQIAgent(config, model_units_folder, run_num, i, n_episodes, reward_type, available_actions, agents_connections) for i in range(n_agents)]
     
 # TO-DO: check if move these following 2 functions in DistributedQLearningAgent class
 

@@ -1,7 +1,7 @@
 from production_plant_environment.env.production_plant_environment_v0 import ProductionPlantEnvironment
 from utils.learning_policies_utils import initialize_agents, get_agent_state_and_product_skill_observation_DISTQ_online
 from utils.fqi_utils import get_FQI_state
-from utils.graphs_utils import DistQAndLPIPlotter
+from utils.graphs_utils import DistQAndLPIPlotter, FQIPlotter
 from utils.run_environment_utils import get_next_agent_number
 import json
 import numpy as np
@@ -9,6 +9,7 @@ import copy
 import os
 
 CONFIG_PATH = "config/simulator_config.json"
+SEMI_MDP_CONFIG_PATH = "config/semiMDP_reward_config.json"
 
 with open(CONFIG_PATH) as config_file:
     config = json.load(config_file)
@@ -23,6 +24,7 @@ n_episodes = config['n_episodes']
 num_max_steps = config['num_max_steps']
 n_production_skills = config['n_production_skills']
 nothing_action = n_production_skills + 5
+defer_action = n_production_skills + 4
 algorithm = config['algorithm']
 export_trajectories = config['export_trajectories']
 output_log = config['output_log']
@@ -44,6 +46,10 @@ baseline_path = config['baseline_path']
 OUTPUT_PATH = config['output_path']
 TRAJECTORY_PATH = config['trajectory_path']
 
+if custom_reward == 'reward5':
+    with open(SEMI_MDP_CONFIG_PATH) as config_file:
+        semiMDP_reward_config = json.load(config_file)
+
 # Dictionary of the paths of all the runs
 model_path_runs = {}
 baseline_path_runs = {}
@@ -55,7 +61,7 @@ for run in range(n_runs):
     if algorithm != 'random' and algorithm != 'FQI':
         learning_agents, update_values, policy_improvement = initialize_agents(n_agents, algorithm, run, n_episodes, custom_reward, config['available_actions'], config['agents_connections'])
     elif algorithm == 'FQI':
-        learning_agents = initialize_agents(n_agents, algorithm, n_episodes, custom_reward)
+        learning_agents = initialize_agents(n_agents, algorithm, run, n_episodes, custom_reward, config['available_actions'], config['agents_connections'])
 
     if algorithm == 'LPI':
         observations_history_LPI = {}
@@ -126,6 +132,11 @@ for run in range(n_runs):
                 else:
                     # update exploration probability basing on episode
                     agent.update_exploration_prob(test_model, episode + 1)
+
+        if algorithm == 'FQI' and not test_model:
+            for fqi_agent in learning_agents:
+                fqi_agent.iter()
+                fqi_agent.save()
 
         if custom_reward == 'reward5':
             trajectory_for_semi_MDP = []
@@ -310,17 +321,20 @@ for run in range(n_runs):
                         next_agent = learning_agents[current_agent].get_next_agent_number(actual_action)
                     else:
                         next_agent = get_next_agent_number(current_agent, actual_action, available_actions, agents_connections)
-                    for check_positive_shaping_step in range(len(trajectory_for_semi_MDP) - actual_step - 1):
-                        if trajectory_for_semi_MDP[actual_step + check_positive_shaping_step + 1]['old_state']['current_agent'] == next_agent:
-                            next_agent_action = trajectory_for_semi_MDP[actual_step + check_positive_shaping_step + 1]['action']
-                            if next_agent_action != nothing_action:
-                                if next_agent_action < n_production_skills:
-                                    if next_agent in agents_skills_custom_duration and next_agent_action in agents_skills_custom_duration[next_agent]:
-                                        next_agent_action_time = agents_skills_custom_duration[next_agent][next_agent_action]
-                                    else:
-                                        next_agent_action_time = action_time[next_agent_action]
-                                    trajectory_for_semi_MDP[actual_step]['reward'] = next_agent_action_time
-                                break
+                    if semiMDP_reward_config['positive_shaping']:
+                        for check_positive_shaping_step in range(len(trajectory_for_semi_MDP) - actual_step - 1):
+                            if trajectory_for_semi_MDP[actual_step + check_positive_shaping_step + 1]['old_state']['current_agent'] == next_agent:
+                                next_agent_action = trajectory_for_semi_MDP[actual_step + check_positive_shaping_step + 1]['action']
+                                if next_agent_action != nothing_action:
+                                    if next_agent_action < n_production_skills:
+                                        if next_agent in agents_skills_custom_duration and next_agent_action in agents_skills_custom_duration[next_agent]:
+                                            next_agent_action_time = agents_skills_custom_duration[next_agent][next_agent_action]
+                                        else:
+                                            next_agent_action_time = action_time[next_agent_action]
+                                        trajectory_for_semi_MDP[actual_step]['reward'] = next_agent_action_time * semiMDP_reward_config['positive_shaping_constant']
+                                    break
+                    if actual_action == defer_action and semiMDP_reward_config['negative_shaping']:
+                        trajectory_for_semi_MDP[actual_step]['reward'] = -1 * semiMDP_reward_config['negative_shaping_constant']
 
 
             # semi MDP reward postponed update values (at the end of the episode)
@@ -397,7 +411,7 @@ for run in range(n_runs):
                 with open(f"{TRAJECTORY_PATH}_run{run}_{episode}.json", 'w') as outfile:
                     json.dump(trajectories, outfile, indent=6)
 
-        if algorithm != 'random':
+        if algorithm != 'random' and algorithm != 'FQI':
             if not test_model and update_values == 'episode':
                 for agent in learning_agents:
                     agent.apply_values_update()
@@ -429,7 +443,7 @@ for run in range(n_runs):
     with open(info_for_plot_path, 'w') as outfile:
         json.dump(performance, outfile, indent=6)
 
-    if not test_model:
+    if not test_model and algorithm != 'random' and algorithm != 'FQI':
         for agent in learning_agents:
             agent.save()
 
@@ -455,8 +469,13 @@ for run in range(n_runs):
             file.write(f"Time to complete: {performance[i]['episode_duration']}\n\n")
 
 if test_model:
-    if algorithm != 'random':
+    if algorithm != 'random' and algorithm != 'FQI':
         plotter = DistQAndLPIPlotter(model_path_runs, baseline_path_runs)
         plotter.plot_reward_graphs()
         plotter.plot_performance_graph()
+
+if algorithm == 'FQI' and not test_model:
+    plotter = FQIPlotter(model_path_runs)
+    plotter.plot_reward_graphs()
+    plotter.plot_performance_graph()
         

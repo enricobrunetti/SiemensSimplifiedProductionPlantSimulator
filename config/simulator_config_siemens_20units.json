@@ -6,7 +6,7 @@
     "test_model_n_episodes": 10,
     "export_trajectories": false,
     "trajectory_path" : "",
-    "output_log": true,
+    "output_log": false,
     "output_path": "output/20_units_siemens_random_test",
     "n_agents": 20,
     "n_products": 1,
@@ -66,6 +66,6 @@
                               [0]],
     "products_starting_state": [[[1, 0, 0], [2, 0, 0], [0, 0, 0], [3, 0, 0], [4, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [5, 0, 0]]],
     "num_max_steps": 10000,
-    "observability_grade": 4,
+    "observability_grade": 0,
     "gamma": 0.99
 }
