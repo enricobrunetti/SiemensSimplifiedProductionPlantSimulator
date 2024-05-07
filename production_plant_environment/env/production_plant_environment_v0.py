@@ -1,12 +1,11 @@
 from typing import Any
 import gymnasium
 from gymnasium import spaces
-
 import numpy as np
 import random
 
 class ProductionPlantEnvironment():
-    def __init__(self, config = None):
+    def __init__(self, config=None):
         self.config = config
         self.n_agents = self.config['n_agents']
         self.n_products = self.config['n_products']
@@ -60,7 +59,8 @@ class ProductionPlantEnvironment():
         return self._next_observation()
     
     def _next_observation(self):
-        return {'current_agent': self.current_agent, 'time': self.time, 'agents_state': self.agents_state, 'products_state': self.products_state, 'action_mask': self.action_mask, 'agents_busy': self.agents_busy}
+        return {'current_agent': self.current_agent, 'time': self.time, 'agents_state': self.agents_state,
+                'products_state': self.products_state, 'action_mask': self.action_mask, 'agents_busy': self.agents_busy}
 
     def _take_action(self, action):
         # compute time needed to perform the action (if there is custom one for that agent use it otherwise default one for that specific action)
@@ -125,7 +125,9 @@ class ProductionPlantEnvironment():
                 self.agents_busy[agent] = (0, 0)
                 # if the production of a product is terminated remove it from agents_state and update the action mask
                 # of the agent that termined the product
-                if np.max(self.agents_state[agent]) == 1 and all(elem == 0 for elem in np.array(self.products_state[np.argmax(self.agents_state[agent])]).flatten()):
+                if np.max(self.agents_state[agent]) == 1 and all(elem == 0 for
+                                                                 elem in np.array(
+                    self.products_state[np.argmax(self.agents_state[agent])]).flatten()):
                     # TO-DO: find a cleaner way to produce this log
                     print(f"Product {np.argmax(self.agents_state[agent])} finished.")
                     self.agents_state[agent] = np.zeros_like(self.agents_state[agent])
