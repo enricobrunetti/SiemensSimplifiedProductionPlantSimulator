@@ -149,11 +149,11 @@ if __name__ == "__main__":
                             gateway_url=gateway_url)
 
     # Build observation space
-    observation_space = gym.spaces.MultiDiscrete(ag_sim.get_observation_space())
+    observation_space = ag_sim.get_observation_space()
     logger.info('Observation Space Server: {}'.format(observation_space))
 
     # Build action space 
-    action_space = gym.spaces.Discrete(len(ag_sim.ports))
+    action_space = ag_sim.get_action_space()
     logger.info('Action Space Server: {}'.format(action_space))
     
 
@@ -183,7 +183,7 @@ if __name__ == "__main__":
             action_space=action_space,
         )
         # DL framework to use.
-        .framework(learning_config["framework"]) # TensorFlow or Torch
+        .framework(learning_config["framework"])  # TensorFlow or Torch
         # Use the `PolicyServerInput` to generate experiences.
         .offline_data(input_=_input)
         # Use n worker processes to listen on different ports.

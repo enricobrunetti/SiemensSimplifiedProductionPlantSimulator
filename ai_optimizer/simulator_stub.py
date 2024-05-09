@@ -8,7 +8,7 @@ class Simulator():
             config = json.load(config_file)
         self.n_agents = config["n_agents"]
         self.mqtt_hostname = mqtt_hostname
-        self.real_cppu_names = [f'ccpu_{i}' for i in range(self.n_agents)]
+        self.real_cppu_names = [f'cppu_{i}' for i in range(self.n_agents)]
 
     def terminate(self):
         pass

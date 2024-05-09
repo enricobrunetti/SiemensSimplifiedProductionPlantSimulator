@@ -140,7 +140,7 @@ class ProductionPlantEnvironment():
 
         if self.current_agent < self.n_agents - 1:
             self.current_agent += 1
-        else :
+        else:
             self.current_agent = 0
 
         if done:

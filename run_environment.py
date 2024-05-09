@@ -1,8 +1,7 @@
 from production_plant_environment.env.production_plant_environment_v0 import ProductionPlantEnvironment
 import sys
 sys.path.insert(0, 'ai_optimizer')
-from utils.learning_policies_utils import initialize_agents, get_agent_state_and_product_skill_observation_DISTQ_online
-from utils.fqi_utils import get_FQI_state
+from utils.learning_policies_utils import initialize_agents
 from utils.graphs_utils import DistQAndLPIPlotter, RewardVisualizer
 import json
 import numpy as np
@@ -12,7 +11,7 @@ import copy
 
 CONFIG_PATH = "config/simulator_config_3units.json"
 SERVER_BASE_PORT = 9900
-MQTT_HOST_URL = 'tcp://127.0.0.1:1883'
+MQTT_HOST_URL = 'localhost'
 with open(CONFIG_PATH) as config_file:
     config = json.load(config_file)
 
@@ -35,12 +34,17 @@ baseline_path = config['baseline_path']
 one_hot_state = config['one_hot_state']
 loop_threshold = config["loop_threshold"]
 checkpoint_frequency = config["checkpoint_frequency"]
+shaping_value = config["shaping_value"]
+agent_connections = config["agents_connections"]
+ports = []
+for agent in range(n_agents):
+    ports.append([i for i, value in enumerate(agent_connections[str(agent)]) if value is not None])
+ports = np.array(ports)
 
-
-def get_rllib_state(state, old_state, one_hot_state=False, threshold=500):
+def get_rllib_state(state, old_state, one_hot_state=False):
     # next_skill , previous_agent, threshold_detected
     obs_rllib = []
-    next_skill = state["product_state"][:, 0].tolist().index(1)
+    next_skill = state["products_state"][0,:, 0].tolist().index(1)
     previous_agent = old_state["current_agent"]
     if one_hot_state:
         next_skill_ohe = np.zeros(n_production_skills)
@@ -49,15 +53,45 @@ def get_rllib_state(state, old_state, one_hot_state=False, threshold=500):
         previous_agent_ohe = np.zeros(n_agents)
         previous_agent_ohe[previous_agent] = 1
         previous_agent = previous_agent_ohe
-    threshold_detected = state["time"] > threshold  # TODO: implement a  real threshold check
     obs_rllib.extend(next_skill)
     obs_rllib.extend(previous_agent)
-    obs_rllib.extend([threshold_detected])
     return np.array(obs_rllib).flatten()
 
 
-def convert_action(action):
-    return action
+def extract_kpi(skill): # TODO remove since it is done inside the env
+    fact_duration = 0
+    fact_energy = 0
+    kpi_duration = skill["Duration"]
+    idle_energy_consumption = skill['IdleEnergyConsumption']
+    dynamic_energy_consumption = sum([behavior['DynamicEnergyConsumption']
+                                      for behavior in skill['Behaviors']])
+    kpi_energy = idle_energy_consumption + dynamic_energy_consumption
+    kpi = fact_duration * kpi_duration + fact_energy * kpi_energy
+    return kpi
+
+
+def shape_reward(overall_kpi, production_kpi, shaping_value=1.):
+    """
+    Shape the reward
+    - non_production_kpi: any kind of ,
+    - skills_duration: is the duration due to execution skills (it's contained in computed_duration)
+    """
+    return overall_kpi - shaping_value * production_kpi
+
+
+def compute_reward_rllib(reward, skill, non_production_skill):
+    """ Compute the reward in a Semi-MDP fashion for RLlib"""
+    overall_kpi = reward
+    if skill["Skill"] not in non_production_skill:
+        production_kpi = reward
+    else:
+        production_kpi = 0
+    return overall_kpi, production_kpi
+
+
+def convert_action(action, agent):
+    return action  # action is converted to port directly in agent
+
 
 def get_cppu_name(agent):
     return f'cppu_{agent}'
@@ -71,7 +105,8 @@ reward_visualizer = RewardVisualizer(n_agents)
 performance = {}
 model_path = "models/rllib/"
 
-
+cppu_names = [f'cppu_{i}' for i in range(n_agents)]
+non_production_skills = []
 if test_model:
     file_log_name = f"{model_path}/test_logs.txt"
 else:
@@ -111,6 +146,7 @@ for episode in range(n_episodes):
     episode_id = f"E{episode}"
     communicator.publish_episode_management('Start', episode_id)
     communicator.sync_episode()
+
     for step in range(num_max_steps):
         if output_log and custom_reward != 'reward5':
             with open(f"{OUTPUT_PATH}_{episode}.txt", 'a') as file:
@@ -151,20 +187,34 @@ for episode in range(n_episodes):
             else:
                 action_selected_by_algorithm = True
                 cppu_name = get_cppu_name(state["current_agent"])
-                obs = get_rllib_state(state, one_hot_state=one_hot_state, old_state=old_state, threshold=loop_threshold)
+                obs = get_rllib_state(state, one_hot_state=one_hot_state, old_state=old_state)
                 #obs_rllib = []
-                communicator.send_state(cppu_name, obs)
+                if cppu_name in previous_rewards:
+                    overall_kpi, production_kpi = previous_rewards[cppu_name]
+                    reshaped_reward = - shape_reward(overall_kpi=overall_kpi, production_kpi=production_kpi,
+                                                     shaping_value=shaping_value)
+                else:
+                    reshaped_reward = None  # first time
+                previous_rewards[cppu_name] = (0, 0) # reset accumulators
+                threshold_detected = state["time"] > loop_threshold  # TODO: implement a  real threshold check
+                communicator.set_action_barrier(cppu_name)
+                communicator.send_state_and_previous_reward(cppu_name, obs, reshaped_reward, threshold_detected)
                 # only works for single product as we need to wait for the action on this agent
                 raw_action = communicator.receive_action(cppu_name)
-                action = convert_action(raw_action)
+                action = convert_action(raw_action, state["current_agent"])
         # Here send the message to the workers
         previous_state = state
         state, reward, done, _ = env.step(action)
         if action_selected_by_algorithm:
-            previous_rewards[cppu_name] = reward
-            next_obs = get_rllib_state(state, one_hot_state=one_hot_state, old_state=previous_state,
-                                       threshold=loop_threshold)
-            communicator.send_transition(cppu_name, obs, raw_action, reward, next_obs, done)
+            for agent in cppu_names:
+                if agent in previous_rewards:
+                        skill = None # TODO add real skill object
+                        overall_kpi, production_kpi = compute_reward_rllib(reward, skill, non_production_skills)
+                        previous_rewards[agent][0] += overall_kpi
+                        previous_rewards[agent][1] += production_kpi
+            # next_obs = get_rllib_state(state, one_hot_state=one_hot_state, old_state=previous_state,
+            #                            threshold=loop_threshold)
+            # communicator.send_transition(cppu_name, obs, raw_action, reward, next_obs, done)
         if custom_reward == 'reward5':
             trajectory_for_semi_MDP.append({'step': step, 'old_state': old_state,
                                             'action': action, 'reward': reward,

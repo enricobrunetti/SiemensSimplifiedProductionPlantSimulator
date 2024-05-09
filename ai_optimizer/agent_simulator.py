@@ -7,6 +7,7 @@ import multiprocessing
 import numpy as np
 import paho.mqtt.client as mqtt
 from custom_policies import get_string_observation
+import gymnasium as gym
 
 
 ENV_SIMULATOR = 'CPPS_SIMULATOR_HOME'
@@ -62,10 +63,10 @@ class AgentSImulator():
         
         # set the CPPU names used in the simulator including the plant
         self.n_agents = self.config["n_agents"]
-        self.all_cppu_names = [f'ccpu_{i}' for i in range(self.n_agents)]
+        self.all_cppu_names = [f'cppu_{i}' for i in range(self.n_agents)]
 
         # set the CPPU names used in the simulator that are not a plant
-        self.real_cppu_names = [f'ccpu_{i}' for i in range(self.n_agents)]
+        self.real_cppu_names = [f'cppu_{i}' for i in range(self.n_agents)]
         self.cppc_name = "" # TODO don't know if needed
         self.cppu_dictionary = {real_cppu_name: i-1 for i, real_cppu_name in enumerate(self.real_cppu_names, 1)}
         self.cppu_name = cppu_name
@@ -90,11 +91,13 @@ class AgentSImulator():
         
         # Learning-realted quantities
         self.learning_config = learning_config
+        self.one_hot_state = self.learning_config['one_hot_state']
         self.shaping_value = self.learning_config['shaping_value']
         self.fact_duration = self.learning_config['fact_duration']
         self.fact_energy = self.learning_config['fact_energy']
         self.observation_space_dict = {key: value for (key, value) in
                                        self.learning_config["observation_space_dict"].items() if value}
+        self.action_space = gym.spaces.Discrete(len(self.ports))
         self.non_production_skill = ["transport", "defer", "buffer"]
         self.counter_dict = {}
 
@@ -232,9 +235,36 @@ class AgentSImulator():
         self.logger.info(f"RLLib Shaped reward: {reshaped_reward}")
         return reshaped_reward
 
+    def get_action_space_ohe(self):
+        obs_space_low = []
+        obs_space_high = []
+        if self.observation_space_dict.get("next_skill", False):
+            obs_space_low.append(np.zeros(len(self.skill_names)))
+            obs_space_high.append(np.ones(len(self.skill_names)))
+        if self.observation_space_dict.get("product_name", False):
+            obs_space_low.append(np.zeros(len(self.product_names)))
+            obs_space_high.append(np.ones(len(self.product_names)))
+        if self.observation_space_dict.get("cppu_state", False):
+            obs_space_low.append(np.zeros(len(self.product_names)))
+            obs_space_high.append(np.ones(len(self.product_names)))
+        if self.observation_space_dict.get("next_skills", False):
+            obs_space_low.append(np.zeros(len(self.skill_names)))
+            obs_space_high.append(np.ones(len(self.skill_names)))
+        if self.observation_space_dict.get("counter", False):
+            obs_space_low.append(np.zeros(1))
+            obs_space_high.append(np.ones(1))
+        if self.observation_space_dict.get("previous_cppu", False):
+            obs_space_low.append(np.zeros(len(self.cppu_dictionary)))
+            obs_space_high.append(np.ones(len(self.cppu_dictionary)))
+        obs_space_low = np.concatenate(obs_space_low)
+        obs_space_high = np.concatenate(obs_space_high)
+        return gym.spaces.Box(low=obs_space_low, high=obs_space_high)
+
     def get_observation_space(self):
         """ Return a list with the dimensionality of each component of the observation """
-        obs_space= []
+        if self.one_hot_state:
+            return self.get_action_space_ohe()
+        obs_space = []
         if self.observation_space_dict.get("next_skill", False):
             obs_space.append(len(self.skill_names))
         if self.observation_space_dict.get("product_name", False):
@@ -247,7 +277,10 @@ class AgentSImulator():
             obs_space.append(2)  # binary
         if self.observation_space_dict.get("previous_cppu", False):
             obs_space.append(len(self.cppu_dictionary))
-        return obs_space
+        return gym.spaces.MultiDiscrete(obs_space)
+
+    def get_action_space(self):
+        return self.action_space
     
     def get_position_in_observation(self, field_name):
         """Given the field, retrive the position in the observation

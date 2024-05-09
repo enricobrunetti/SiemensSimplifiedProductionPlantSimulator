@@ -24,6 +24,7 @@
     "baseline": "random",
     "fact_duration": 1.0,
     "fact_energy" : 0.0,
+    "one_hot_state": true,
     "observation_space_dict" : {"next_skill": true,
                                 "product_name": false,
                                 "cppu_state": false,

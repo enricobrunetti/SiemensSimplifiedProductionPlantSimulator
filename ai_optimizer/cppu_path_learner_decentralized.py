@@ -91,6 +91,7 @@ class Agent(AgentSImulator):
 
         # Setting up RL-specific attributes
         self.action_dimensions = len(self.ports)
+        self.action_space = gym.spaces.Discrete(self.action_dimensions)
         self.logger.info('Ports: {}'.format(self.ports))
         self.logger.info('Ports Available: {}'.format(self.action_dimensions))
         self.last_observation = None
@@ -107,8 +108,8 @@ class Agent(AgentSImulator):
         # Setting Up clients containing algorithms
         if self.client_server:
             self.client = self.connect_rllib_client(
-                observation_space=gym.spaces.MultiDiscrete(self.get_observation_space()),
-                action_space=gym.spaces.Discrete(self.action_dimensions),
+                observation_space=self.get_observation_space(),
+                action_space=self.get_action_space(),
                 server_address=self.learning_config["SERVER_ADDRESS"],
                 connection_port=serverport,
                 inference_mode_rllib=self.learning_config["inference_mode"],
@@ -167,7 +168,7 @@ class Agent(AgentSImulator):
         return client
 
 
-    def learning_step(self, observation):
+    def learning_step(self, observation, reward):
         """
         Performs Learning step once handle_path_selection message is received
         """
@@ -177,7 +178,7 @@ class Agent(AgentSImulator):
         self.logger.info('Learning_step: Requesting action and learning')
         if self.client_server: 
             # extract reward of previous interaction and store them for learning at ending episode
-            self.update_last_reward()
+            self.update_last_reward(reward)
             self.last_observation = observation
         elif self.algorithm_class == 'Dist_Q':
             raise ValueError("Dist Q not supported")
@@ -272,11 +273,17 @@ class Agent(AgentSImulator):
             whiteboard = {'Q_values' : self.client.values, 'counter_dict': self.counter_dict}
         self.set_whiteboard(self.cppu_name, whiteboard)
 
-    def update_last_reward(self):
+    def update_last_reward(self, reward):
         '''
         In case of Rllib before logging one action the reward for the previous one should be computed.
         If on-policy, log the reward of the previous action (if any)
         '''
+        assert (len(self.trajectory) > 0 and reward is not None) or (len(self.trajectory) == 0 and reward is None)
+        if reward is not None:
+            last_sample_key = list(self.trajectory.keys())[-1]
+            last_sample = self.trajectory[last_sample_key]
+            self.client.log_returns(episode_id=last_sample['info']['eid'], reward=reward)
+
         if len(self.trajectory) > 0:
             # Log the reward corresponding to the last action
             last_sample_key = list(self.trajectory.keys())[-1]
@@ -305,12 +312,13 @@ class Agent(AgentSImulator):
         self.publish_variant(cppu, variant, mqtt_id)
         self.publish_variant_learning_status(cppu, skill, mqtt_id)
 
-    def handle_path_selection(self, state):
+    def handle_path_selection(self, state, reward, threshold_detected=False):
         """ 
         Given the cppu, this method asks for the port where to transport the product
         """
-        
+
         self.exchange_dicts['path'] = {}
+
         # self.logger.debug(f'MQTT[{mqtt_id}] PATH Exchange Dict Created ...')
         # self.exchange_dicts['path']['cppu'] = cppu
         # self.exchange_dicts['path']['product'] = product
@@ -318,12 +326,13 @@ class Agent(AgentSImulator):
         # product_info = self.get_product(self.cppu_name, product)
         # self.transported_products.add(product)
         
-        if not self.check_production_threshold(state):
+        if not threshold_detected:
             if not self.baseline_mode:
-                observation = state #self.return_observation_tuples(product_info, self.client_server, self.algorithm_class)
+                observation = state
+                #self.return_observation_tuples(product_info, self.client_server, self.algorithm_class)
                 if self.train_mode:
                     # Port publishing meanwhile managing information
-                    self.learning_step(observation)
+                    self.learning_step(observation, reward)
                 elif self.inference_mode:
                     raise ValueError("Only train_mode implemented") # TODO do we need this?
                     # action = self.infer_action(observation, inference_mode=self.inference_mode)
@@ -472,8 +481,12 @@ class Agent(AgentSImulator):
               and parameters[1] == self.cppu_name):
             self.logger.debug(f'CPPU {self.cppu_name} ' +
                               'MQTT message PathSelection ...')
+            payload = json.loads(payload)
+            state = np.array(payload["state"])
+            reward = payload["reward"]
+            threshold_detected = bool(payload["threshold_detected"])
             threading.Thread(target=self.handle_path_selection,
-                             args=payload).start()
+                             args=[state, reward, threshold_detected]).start()
         elif (parameters[0] == 'PathState'
               and self.train_mode
               and parameters[1] == self.cppu_name):
@@ -504,6 +517,7 @@ class Agent(AgentSImulator):
         elif (parameters[0] == 'AgentReadyRequest'
               and parameters[1] == self.cppu_name
               and int(payload) == 1):
+            self.logger.debug(f'{self.cppc_name}: received AgentReadyRequest!')
             threading.Thread(target=self.publish_ready, args=()).start()
         elif parameters[0] == 'UpdateValues':
             threading.Thread(target=self.client.modify_values, args=()).start()
@@ -560,7 +574,8 @@ class Agent(AgentSImulator):
         exchange_dict['port'] = port
 
         mqtt_topic = '/'.join(['PathSelection',
-                               exchange_dict['cppu']])
+                               'cppc',
+                               self.cppu_name])
         with self.mqtt_pub_client_lock:
             self.mqtt_pub_client.publish(mqtt_topic,
                                          json.dumps({"port": port}))

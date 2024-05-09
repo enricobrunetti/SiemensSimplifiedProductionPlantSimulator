@@ -34,7 +34,8 @@ class Communicator:
         self.cppu_to_wait_lock = threading.Lock()
         self.cppu_ready = []
         self.cppu_ready_lock = threading.Lock()
-
+        self.mqtt_setup()
+        print("Waiting until the agents are up!")
         self.wait_for_agents()
         self.publish_training_mode(training=True, inference_mode=True)
 
@@ -45,7 +46,12 @@ class Communicator:
             mqtt_client.connect(self.mqtt_hostname)
         self.mqtt_sub_client.on_message = self.mqtt_sub_callback
         self.mqtt_sub_client.subscribe(f'PathSelection/#')
+        self.mqtt_sub_client.subscribe(f'AgentReady/#')
+        self.mqtt_sub_client.subscribe(f'StartedEpisode/#')
+        self.mqtt_sub_client.subscribe(f'EndedEpisode/#')
         self.mqtt_pub_client_lock = threading.Lock()
+        self.mqtt_sub_client.loop_start()
+        self.mqtt_pub_client.loop_start()
 
     def publish_training_mode(self, training, inference_mode):
         """Managing Training"""
@@ -94,7 +100,9 @@ class Communicator:
         payload = message.payload.decode('utf-8')
         cppu_name = parameters[1]
 
-        if parameters[0] == 'PathSelection':
+        if parameters[0] == 'PathSelection' and cppu_name == 'cppc':
+            cppu_name = parameters[2]
+            payload = json.loads(payload)
             self.actions[cppu_name] = payload["port"]
             self.action_barriers[cppu_name].wait()
         elif parameters[0] == 'AgentReady' and int(payload) == 1:
@@ -107,12 +115,14 @@ class Communicator:
             threading.Thread(target=self.add_cppus,
                              args=((int(payload), parameters[1]))).start()
 
-    def send_state(self, cppu, state):
+    def send_state_and_previous_reward(self, cppu, state, prev_reward, threshold_detected=False):
         # exchange_dict = {"cppu": cppu}
         mqtt_topic = '/'.join(['PathSelection', cppu])
         with self.mqtt_pub_client_lock:
             self.mqtt_pub_client.publish(mqtt_topic,
-                                         json.dumps({"state": state}))
+                                         json.dumps({"state": state.tolist(),
+                                                     "reward": prev_reward,
+                                                     "threshold_detected": threshold_detected}))
         return f'State {state}'
 
     def send_transition(self, cppu, state, action, reward, next_state, done):
@@ -126,8 +136,10 @@ class Communicator:
                                                      "done": done}))
         return f'Sent Transition'
 
-    def receive_action(self, agent):
+    def set_action_barrier(self, agent):
         self.action_barriers[agent] = threading.Barrier(2)
+
+    def receive_action(self, agent):
         self.action_barriers[agent].wait()
         action = self.actions[agent]
         return action

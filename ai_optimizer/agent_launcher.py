@@ -273,18 +273,18 @@ if __name__ == "__main__":
             #launcher_processes[cppu_name] = subprocess.Popen(cmd)
 
         # Launch orchestrator
-        cppu_name = 'cppc'
-        cmd = ['/usr/bin/python3', agent_creator_path,
-               '--orchestrator', str(True),
-               '--cppu_name', cppu_name,
-               '--learning_config_path', learning_config_path,
-               '--simulator_config_path', simulator.path_config,
-               '--product_config_path', simulator.path_products_config,
-               '--out_dir', out_dir,
-               '--seed', str(args.seed)]  # save the original seed of the experiment
-        logger.info(f'Launching Agent::Orchestrator')
-        logger.debug(f" > {' '.join(cmd)}")
-        print(' '.join(cmd[2:]))
+        # cppu_name = 'cppc'
+        # cmd = ['/usr/bin/python3', agent_creator_path,
+        #        '--orchestrator', str(True),
+        #        '--cppu_name', cppu_name,
+        #        '--learning_config_path', learning_config_path,
+        #        '--simulator_config_path', simulator.path_config,
+        #        '--product_config_path', simulator.path_products_config,
+        #        '--out_dir', out_dir,
+        #        '--seed', str(args.seed)]  # save the original seed of the experiment
+        # logger.info(f'Launching Agent::Orchestrator')
+        # logger.debug(f" > {' '.join(cmd)}")
+        # print(' '.join(cmd[2:]))
         #launcher_processes[cppu_name] = subprocess.Popen(cmd)
 
     except Exception as e:
@@ -294,14 +294,14 @@ if __name__ == "__main__":
     logger.info("Launching of optimizer complete. Waiting for the simulation to finish ...")
 
     logger.info('Waiting for Orchestrator to terminate...')
-    try:
-        launcher_processes['cppc'].wait(args.timeout)
-        logger.info('Orchestrator: execution completed!')
-        terminate()
-        time.sleep(30)  # give some time for cleaning up simulator ports
-    except Exception as e:
-        logger.error('TIMEOUT!')
-        terminate()
-        time.sleep(30)
-        raise e
+    # try:
+    #     launcher_processes['cppc'].wait(args.timeout)
+    #     logger.info('Orchestrator: execution completed!')
+    #     terminate()
+    #     time.sleep(30)  # give some time for cleaning up simulator ports
+    # except Exception as e:
+    #     logger.error('TIMEOUT!')
+    #     terminate()
+    #     time.sleep(30)
+    #     raise e
 

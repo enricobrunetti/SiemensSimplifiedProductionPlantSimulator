@@ -27,7 +27,7 @@ def initialize_agents(n_agents, algorithm, n_episodes, reward_type, available_ac
         with open(FQI_CONFIG_PATH) as config_file:
             config = json.load(config_file)
     elif algorithm == "rllib":
-        communicator = Communicator(n_agents)
+        communicator = Communicator(n_agents, mqtt_hostname=mqtt_host_url)
 
         return communicator
     
