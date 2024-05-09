@@ -303,8 +303,9 @@ class FQIAgent():
         self.exploration_probability = config['exploration_probability']
 
         self.n_training_episodes = n_training_episodes
+        self.test_episodes_for_fqi_iteration = config['test_episodes_for_fqi_iteration']
         self.reward_type = reward_type
-        self.model_name = f'models/{model_units_folder}/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.n_training_episodes}_{self.observability_grade}_{self.regressor_params["n_estimators"]}_{self.regressor_params["min_samples_split"]}_{self.max_iterations}_{self.batch_size}_{self.exploration_probability}'
+        self.model_name = f'models/{model_units_folder}/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.n_training_episodes/self.test_episodes_for_fqi_iteration}_{self.observability_grade}_{self.regressor_params["n_estimators"]}_{self.regressor_params["min_samples_split"]}_{self.max_iterations}_{self.batch_size}_{self.exploration_probability}'
         self.model_name += f'/run{self.run_num}'
 
         _, _, _, self.r, self.s_prime, self.absorbing, self.sa, _ = split_data_single_agent(self.INPUT_DIR, self.agent_num)
@@ -325,6 +326,14 @@ class FQIAgent():
     def iter(self):
         for _ in range(self.max_iterations):
             self.fqi_agent._iter(self.sa, self.r, self.s_prime, self.absorbing, **self.fit_params)
+
+    # Used to execute a greedy episode
+    def change_exploration_probability(self, epsilon):
+        self.pi.epsilon = epsilon
+
+    # Used to restore after the greedy episode
+    def restore_exploration_probability(self):
+        self.pi.epsilon = self.exploration_probability
 
     def select_action(self, observation, mask):
         # adjust mask to make it contain only actions possible for that specific agent

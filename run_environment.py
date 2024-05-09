@@ -21,6 +21,7 @@ n_agents = config['n_agents']
 n_products = config['n_products']
 n_runs = config['n_runs']
 n_episodes = config['n_episodes']
+n_training_episodes = n_episodes
 num_max_steps = config['num_max_steps']
 n_production_skills = config['n_production_skills']
 nothing_action = n_production_skills + 5
@@ -42,6 +43,7 @@ agents_skills_custom_duration = {
 available_actions = config['available_actions']
 agents_connections = {int(k): v for k, v in config['agents_connections'].items()}
 baseline_path = config['baseline_path']
+greedy_step = False
 
 OUTPUT_PATH = config['output_path']
 TRAJECTORY_PATH = config['trajectory_path']
@@ -61,7 +63,7 @@ for run in range(n_runs):
     if algorithm != 'random' and algorithm != 'FQI':
         learning_agents, update_values, policy_improvement = initialize_agents(n_agents, algorithm, run, n_episodes, custom_reward, config['available_actions'], config['agents_connections'])
     elif algorithm == 'FQI':
-        learning_agents = initialize_agents(n_agents, algorithm, run, n_episodes, custom_reward, config['available_actions'], config['agents_connections'])
+        learning_agents, test_episodes_for_fqi_iteration = initialize_agents(n_agents, algorithm, run, n_episodes, custom_reward, config['available_actions'], config['agents_connections'])
 
     if algorithm == 'LPI':
         observations_history_LPI = {}
@@ -69,6 +71,7 @@ for run in range(n_runs):
     env = ProductionPlantEnvironment(config)
 
     performance = {}
+    greedy_fqi_performance = {}
 
     if algorithm != 'random':
         if test_model:
@@ -133,7 +136,19 @@ for run in range(n_runs):
                     # update exploration probability basing on episode
                     agent.update_exploration_prob(test_model, episode + 1)
 
-        if algorithm == 'FQI' and not test_model:
+        if greedy_step:
+            greedy_step = False
+            for fqi_agent in learning_agents:
+                fqi_agent.restore_exploration_probability()
+            print("Exploration probability restored")
+        
+        if algorithm == 'FQI' and not test_model and episode % test_episodes_for_fqi_iteration == (test_episodes_for_fqi_iteration - 1):
+            greedy_step = True
+            for fqi_agent in learning_agents:
+                fqi_agent.change_exploration_probability(0)
+            print("Exploration probability changed to 0")
+
+        if algorithm == 'FQI' and not test_model and episode % test_episodes_for_fqi_iteration == 0:
             for fqi_agent in learning_agents:
                 fqi_agent.iter()
                 fqi_agent.save()
@@ -310,10 +325,11 @@ for run in range(n_runs):
             for actual_step in range(len(trajectory_for_semi_MDP) - 1):
                 if trajectory_for_semi_MDP[actual_step]['action_selected_by_algorithm']:
                     current_agent = trajectory_for_semi_MDP[actual_step]['old_state']['current_agent']
+                    current_product = np.where(trajectory_for_semi_MDP[actual_step]['old_state']['agents_state'][current_agent] == 1)[0][0]
                     actual_time = trajectory_for_semi_MDP[actual_step]['old_state']['time']
                     actual_action = trajectory_for_semi_MDP[actual_step]['action']
                     next_step = actual_step + 1
-                    while next_step < (len(trajectory_for_semi_MDP) - 1) and trajectory_for_semi_MDP[next_step]['old_state']['agents_state'][current_agent][0] != 1:
+                    while next_step < (len(trajectory_for_semi_MDP) - 1) and trajectory_for_semi_MDP[next_step]['old_state']['agents_state'][current_agent][current_product] != 1:
                         next_step += 1
                     next_time = trajectory_for_semi_MDP[next_step]['old_state']['time']
                     trajectory_for_semi_MDP[actual_step]['reward'] = -1 * (next_time - actual_time)
@@ -423,25 +439,41 @@ for run in range(n_runs):
         with open(file_log_name, 'a') as file:
             file.write(f"Episode {episode+1} ended\n")
 
-        performance[episode] = {}
-        performance[episode]['episode_duration'] = state['time']
-        performance[episode]['agents_reward_for_plot'] = agents_rewards_for_plot
+        if greedy_step and not test_model:
+            num = len(greedy_fqi_performance)
+            greedy_fqi_performance[num] = {}
+            greedy_fqi_performance[num]['episode_duration'] = state['time']
+            greedy_fqi_performance[num]['agents_reward_for_plot'] = agents_rewards_for_plot
 
-        for i in range(n_agents):
-            mean_reward = np.mean(agents_rewards_for_plot[i])
+            for i in range(n_agents):
+                mean_reward = np.mean(agents_rewards_for_plot[i])
 
-            performance[episode][i] = {}
-            performance[episode][i]['mean_reward'] = mean_reward
+                greedy_fqi_performance[num][i] = {}
+                greedy_fqi_performance[num][i]['mean_reward'] = mean_reward
+        else:
+            performance[episode] = {}
+            performance[episode]['episode_duration'] = state['time']
+            performance[episode]['agents_reward_for_plot'] = agents_rewards_for_plot
+
+            for i in range(n_agents):
+                mean_reward = np.mean(agents_rewards_for_plot[i])
+
+                performance[episode][i] = {}
+                performance[episode][i]['mean_reward'] = mean_reward
 
     if test_model:
-        plot_path = f"{model_path}/test_reward_graph.png"
         info_for_plot_path = f"{model_path}/reward_for_plot_test.json"
     else:
-        plot_path = f"{model_path}/training_reward_graph.png"
         info_for_plot_path = f"{model_path}/reward_for_plot_training.json"
+        if algorithm == 'FQI':
+            info_for_greedy_plot_path = f"{model_path}/reward_for_greedy_plot_training.json"
 
     with open(info_for_plot_path, 'w') as outfile:
         json.dump(performance, outfile, indent=6)
+
+    if algorithm == 'FQI' and not test_model:
+        with open(info_for_greedy_plot_path, 'w') as outfile:
+            json.dump(greedy_fqi_performance, outfile, indent=6)
 
     if not test_model and algorithm != 'random' and algorithm != 'FQI':
         for agent in learning_agents:
@@ -453,15 +485,15 @@ for run in range(n_runs):
         performance_log_name = f"{model_path}/training_performance.txt"
 
     with open(performance_log_name, 'w') as file:
-        episodes_time_to_complete = [performance[i]['episode_duration'] for i in range(n_episodes)]
+        episodes_time_to_complete = [performance[i]['episode_duration'] for i in performance]
         file.write(f"Min time to complete: {np.min(episodes_time_to_complete)}\n")
         file.write(f"Avg time to complete: {np.average(episodes_time_to_complete)}\n")
         file.write(f"Max time to complete: {np.max(episodes_time_to_complete)}\n")
         file.write(f"Variance of time to complete: {np.var(episodes_time_to_complete)}\n")
         for j in range(n_agents):
-            file.write(f"Agent {j} mean reward: {np.nanmean([performance[i][j]['mean_reward'] for i in range(n_episodes)])}\n")
+            file.write(f"Agent {j} mean reward: {np.nanmean([performance[i][j]['mean_reward'] for i in performance])}\n")
         file.write(f"\n")
-        for i in range(n_episodes):
+        for i in performance:
             file.write(f"****Episode {i+1}****\n")
             file.write(f"Mean reward:\n")
             for j in range(n_agents):
@@ -470,12 +502,13 @@ for run in range(n_runs):
 
 if test_model:
     if algorithm != 'random' and algorithm != 'FQI':
-        plotter = DistQAndLPIPlotter(model_path_runs, baseline_path_runs)
+        plotter = DistQAndLPIPlotter(model_path_runs, baseline_path_runs, n_training_episodes)
         plotter.plot_reward_graphs()
         plotter.plot_performance_graph()
 
 if algorithm == 'FQI' and not test_model:
-    plotter = FQIPlotter(model_path_runs)
+    plotter = FQIPlotter(model_path_runs, n_training_episodes, test_episodes_for_fqi_iteration)
     plotter.plot_reward_graphs()
     plotter.plot_performance_graph()
+    plotter.plot_single_run_performance_graph()
         

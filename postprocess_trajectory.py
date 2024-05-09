@@ -1,8 +1,8 @@
 import json
 from utils.trajectories_management import TrajectoryManager
 
-INPUT_DIR = 'output/9_units_siemens_random_test_for_FQI_semiMDP_standard_run0'
-OUTPUT_DIR = 'output/9_units_siemens_random_test_for_FQI_semiMDP_standard_run0_POSTPROCESSED.json'
+INPUT_DIR = 'output/0_for_FQI_9_units_increase_3_product_same_config_run0'
+OUTPUT_DIR = 'output/0_for_FQI_9_units_increase_3_product_same_config_run0_POSTPROCESSED.json'
 CONFIG_PATH = "config/simulator_config.json"
 
 with open(CONFIG_PATH) as config_file:
