@@ -1,6 +1,6 @@
 {
     "algorithm": "FQI",
-    "INPUT_DIR": "output/0_for_FQI_9_units_increase_3_product_same_config_run0_POSTPROCESSED.json",
+    "INPUT_DIR": "output/code_refactor_test_FQI_run0_POSTPROCESSED.json",
     "observability_grade": 0,
     "regressor_params": {"n_estimators": 30,
                         "min_samples_split": 3},
