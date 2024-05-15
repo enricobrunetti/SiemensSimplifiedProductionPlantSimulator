@@ -1,19 +1,23 @@
-from production_plant_environment.env.production_plant_environment_v0 import ProductionPlantEnvironment
+import os
+import json
+import copy
 import sys
 sys.path.insert(0, 'ai_optimizer')
+import numpy as np
+from production_plant_environment.env.production_plant_environment_v0 import ProductionPlantEnvironment
 from utils.learning_policies_utils import initialize_agents
 from utils.graphs_utils import DistQAndLPIPlotter, RewardVisualizer
-import json
-import numpy as np
-import copy
 
 
 
 CONFIG_PATH = "config/simulator_config_3units.json"
+SEMI_MDP_CONFIG_PATH = "config/semiMDP_reward_config.json"
 SERVER_BASE_PORT = 9900
 MQTT_HOST_URL = 'localhost'
 with open(CONFIG_PATH) as config_file:
     config = json.load(config_file)
+with open(SEMI_MDP_CONFIG_PATH) as config_file:
+    semiMDP_reward_config = json.load(config_file)
 
 test_model = config['test_model']
 test_model_name = config['test_model_name']
@@ -100,10 +104,14 @@ OUTPUT_PATH = config['output_path']
 TRAJECTORY_PATH = config['trajectory_path']
 communicator = initialize_agents(n_agents, algorithm, n_episodes, custom_reward,
                           config['available_actions'], config['agents_connections'], mqtt_host_url=MQTT_HOST_URL)
-env = ProductionPlantEnvironment(config)
+
+model_path = "models/rllib/"
+if not os.path.exists(model_path):
+    os.makedirs(model_path)
+run = 1
+env = ProductionPlantEnvironment(config, run=run, model_path=model_path, semiMDP_reward_config=semiMDP_reward_config)
 reward_visualizer = RewardVisualizer(n_agents)
 performance = {}
-model_path = "models/rllib/"
 
 cppu_names = [f'cppu_{i}' for i in range(n_agents)]
 non_production_skills = []
@@ -204,7 +212,7 @@ for episode in range(n_episodes):
                 action = convert_action(raw_action, state["current_agent"])
         # Here send the message to the workers
         previous_state = state
-        state, reward, done, _ = env.step(action)
+        state, reward, done, info = env.step(action)
         if action_selected_by_algorithm:
             for agent in cppu_names:
                 if agent in previous_rewards:
