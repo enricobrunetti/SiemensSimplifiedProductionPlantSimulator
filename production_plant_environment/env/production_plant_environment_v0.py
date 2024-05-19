@@ -313,7 +313,7 @@ class ProductionPlantEnvironment():
         
         self.output_generator.generate_performance_log(self.performance, self.episode)
     
-    def _compute_semi_MDP_reward(self, trajectory_for_semi_MDP):
+    def _compute_semi_MDP_reward2(self, trajectory_for_semi_MDP):
         for actual_step in range(len(trajectory_for_semi_MDP) - 1):
             if trajectory_for_semi_MDP[actual_step]['action_selected_by_algorithm']:
                 current_agent = trajectory_for_semi_MDP[actual_step]['old_state']['current_agent']
@@ -340,6 +340,81 @@ class ProductionPlantEnvironment():
                                 break
                 if actual_action == self.defer_action and self.semiMDP_reward_config['negative_shaping']:
                     trajectory_for_semi_MDP[actual_step]['reward'] = -1 * self.semiMDP_reward_config['negative_shaping_constant']
+        
+        return trajectory_for_semi_MDP
+    
+    def _compute_semi_MDP_reward(self, trajectory_for_semi_MDP):
+        terminated_products = []
+        semiMDP_computer = {}
+        for actual_step in range(len(trajectory_for_semi_MDP)):
+            current_agent = trajectory_for_semi_MDP[actual_step]['old_state']['current_agent']
+            current_product_list = np.where(trajectory_for_semi_MDP[actual_step]['old_state']['agents_state'][current_agent] == 1)[0]
+            if len(current_product_list) > 0:
+                has_product = True
+                current_product = current_product_list[0]
+            else :
+                has_product = False
+            actual_action = trajectory_for_semi_MDP[actual_step]['action']
+            if has_product and trajectory_for_semi_MDP[actual_step]['old_state']['agents_busy'][current_agent][0] == 0:
+                actual_time = trajectory_for_semi_MDP[actual_step]['old_state']['time']
+                if current_agent in semiMDP_computer and current_product in semiMDP_computer[current_agent]:
+                    last_seen_step = semiMDP_computer[current_agent][current_product]['last_seen_step']
+                    last_seen_time = semiMDP_computer[current_agent][current_product]['last_seen_time']
+                    new_reward = -1 * (actual_time - last_seen_time)
+                    new_reward += semiMDP_computer[current_agent][current_product]['shaping']
+                    trajectory_for_semi_MDP[last_seen_step]['reward'] = new_reward
+                    semiMDP_computer[current_agent][current_product]['last_seen_step'] = actual_step
+                    semiMDP_computer[current_agent][current_product]['last_seen_time'] = actual_time
+                    semiMDP_computer[current_agent][current_product]['shaping'] = 0 
+                else:
+                    if current_agent not in semiMDP_computer:
+                        semiMDP_computer[current_agent] = {}
+                    semiMDP_computer[current_agent][current_product] = {}
+                    semiMDP_computer[current_agent][current_product]['last_seen_step'] = actual_step
+                    semiMDP_computer[current_agent][current_product]['last_seen_time'] = actual_time
+                    semiMDP_computer[current_agent][current_product]['shaping'] = 0 
+
+            if self.semiMDP_reward_config['positive_shaping'] and actual_action < self.n_production_skills and has_product:
+                action_time = self._get_action_time(current_agent, actual_action)
+                for agent in range(self.n_agents):
+                    if agent in semiMDP_computer and current_product in semiMDP_computer[agent]:
+                        if self.semiMDP_reward_config['positive_shaping_equal']:
+                            semiMDP_computer[agent][current_product]['shaping'] += self.semiMDP_reward_config['positive_shaping_constant']
+                        else:
+                            semiMDP_computer[agent][current_product]['shaping'] += (action_time * self.semiMDP_reward_config['positive_shaping_constant'])
+
+            if self.semiMDP_reward_config['negative_shaping'] and actual_action == self.defer_action and has_product:
+                semiMDP_computer[current_agent][current_product]['shaping'] -= 1 * self.semiMDP_reward_config['negative_shaping_constant']
+            
+
+            if not self.semiMDP_reward_config['semiMDP_till_end_of_episode']:
+                agents_busy = trajectory_for_semi_MDP[actual_step]['old_state']['agents_busy']
+                products_state = trajectory_for_semi_MDP[actual_step]['old_state']['products_state']
+                agents_state = trajectory_for_semi_MDP[actual_step]['old_state']['agents_state']
+                for agent in agents_busy:
+                    if agents_busy[agent][0] == 1 and agents_busy[agent][1] == trajectory_for_semi_MDP[actual_step]['old_state']['time'] + 1:
+                        prod = np.argmax(agents_state[agent])
+                        if np.max(agents_state[agent]) == 1 and all(elem == 0 for elem in np.array(products_state[prod]).flatten()) and prod not in terminated_products:
+                            final_time = trajectory_for_semi_MDP[actual_step]['old_state']['time']
+                            terminated_products.append(prod)
+                            for a in range(self.n_agents):
+                                if a in semiMDP_computer and prod in semiMDP_computer[a]:
+                                    last_seen_step = semiMDP_computer[a][prod]['last_seen_step']
+                                    last_seen_time = semiMDP_computer[a][prod]['last_seen_time']
+                                    new_reward = -1 * (final_time - last_seen_time)
+                                    new_reward += semiMDP_computer[a][prod]['shaping']
+                                    trajectory_for_semi_MDP[last_seen_step]['reward'] = new_reward
+
+        if self.semiMDP_reward_config['semiMDP_till_end_of_episode']:
+            final_time = trajectory_for_semi_MDP[-1]['old_state']['time']
+            for agent in range(self.n_agents):
+                for product in range(self.n_products):
+                    if agent in semiMDP_computer and product in semiMDP_computer[agent]:
+                        last_seen_step = semiMDP_computer[agent][product]['last_seen_step']
+                        last_seen_time = semiMDP_computer[agent][product]['last_seen_time']
+                        new_reward = -1 * (final_time - last_seen_time)
+                        new_reward += semiMDP_computer[agent][product]['shaping']
+                        trajectory_for_semi_MDP[last_seen_step]['reward'] = new_reward
         
         return trajectory_for_semi_MDP
 

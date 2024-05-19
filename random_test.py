@@ -8,21 +8,34 @@ import numpy as np
 
 import numpy as np
 
-def trova_prodotto_agente(matrice_stato, indice_agente):
-    riga_agente = matrice_stato[indice_agente]
-    indice_prodotto = np.where(riga_agente == 1)[0]
-    if len(indice_prodotto) > 0:
-        return indice_prodotto[0]
-    else:
-        return None
 
-# Esempio di utilizzo
-stato = np.array([[0, 1, 0],
-                  [1, 0, 0],
-                  [0, 0, 1]])
+products_state = [[[1, 0, 0],
+                    [2, 0, 0],
+                    [3, 0, 0],
+                    [4, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [5, 0, 0]],
 
-indice_agente = 2
-indice_prodotto = np.where(stato[indice_agente] == 1)[0][0]
-print(indice_prodotto)
+                    [[0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0]],
 
+                    [[1, 0, 0],
+                    [2, 0, 0],
+                    [3, 0, 0],
+                    [4, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [5, 0, 0]]]
 
+prod = 1
+
+print(all(elem == 0 for elem in np.array(products_state[prod]).flatten()))

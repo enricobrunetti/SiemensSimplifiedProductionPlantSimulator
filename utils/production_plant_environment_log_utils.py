@@ -1,6 +1,7 @@
 import numpy as np
 import json
 import copy
+import os
 
 class OutputGenerator():
     def __init__(self, config, run, model_path):
@@ -34,7 +35,10 @@ class OutputGenerator():
 
     # create output
     def generate_episode_output_file(self, input_trajectory, episode):
-        with open(f"{self.OUTPUT_PATH}_run{self.run}_{episode}.txt", 'w') as file:
+        output_final_path = f'{self.OUTPUT_PATH}/output'
+        if not os.path.exists(output_final_path):
+            os.makedirs(output_final_path)
+        with open(f"{output_final_path}/run{self.run}_{episode}.txt", 'w') as file:
             for actual_step in input_trajectory:
                 file.write(f"***************Episode{episode}***************\n")
                 file.write(f"***************Step{actual_step['step']}***************\n")
@@ -59,7 +63,10 @@ class OutputGenerator():
                 current_product = np.argmax(actual_step['new_state']['agents_state'][actual_step['old_state']['current_agent']]) if actual_step['action'] == 0 else np.argmax(actual_step['old_state']['agents_state'][actual_step['old_state']['current_agent']])
                 trajectories[f"Episode {episode}, Product {current_product}"].append(trajectory_update)
 
-        with open(f"{self.TRAJECTORY_PATH}_run{self.run}_{episode}.json", 'w') as outfile:
+        trajectory_final_path = f'{self.TRAJECTORY_PATH}/trajectory'
+        if not os.path.exists(trajectory_final_path):
+            os.makedirs(trajectory_final_path)
+        with open(f"{trajectory_final_path}/run{self.run}_{episode}.json", 'w') as outfile:
             json.dump(trajectories, outfile, indent=6)
                 
     # create logs

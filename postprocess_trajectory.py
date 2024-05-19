@@ -1,8 +1,8 @@
 import json
 from utils.trajectories_management import TrajectoryManager
 
-INPUT_DIR = 'output/code_refactor_test_FQI_run0'
-OUTPUT_DIR = 'output/code_refactor_test_FQI_run0_POSTPROCESSED.json'
+INPUT_DIR = 'output/9_units_increased_difficulty_5_products_diff_config_random_test_for_FQI_semiMDP_standard_till_product_end_pos_shaping50/trajectory/run0'
+OUTPUT_DIR = 'output/9_units_increased_difficulty_5_products_diff_config_random_test_for_FQI_semiMDP_standard_till_product_end_pos_shaping50/trajectory/POSTPROCESSED.json'
 CONFIG_PATH = "config/simulator_config.json"
 
 with open(CONFIG_PATH) as config_file:
