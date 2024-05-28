@@ -8,10 +8,7 @@ from logging_formatter import setup_logger
 import os
 import argparse
 import json
-import gymnasium as gym
-import time
 from agent_simulator import AgentSImulator
-import glob
 import paho.mqtt.client as mqtt
 import threading
 
@@ -150,10 +147,15 @@ if __name__ == "__main__":
 
     # Build observation space
     observation_space = ag_sim.get_observation_space()
+    # obs_space_low = -1 * np.ones(37)
+    # obs_space_high = np.ones(37)
+    # observation_space = gym.spaces.Box(low=obs_space_low, high=obs_space_high)
     logger.info('Observation Space Server: {}'.format(observation_space))
 
     # Build action space 
     action_space = ag_sim.get_action_space()
+    # action_space = gym.spaces.Discrete(3)
+
     logger.info('Action Space Server: {}'.format(action_space))
     
 
@@ -199,8 +201,9 @@ if __name__ == "__main__":
         .debugging(log_level="INFO", seed=args.seed)
     )
     # Disable RLModules because they need connectors
-    config.rl_module(_enable_rl_module_api=False)
-    config.training(_enable_learner_api=False)
+    config.experimental(_enable_new_api_stack=False)
+    # config.rl_module(_enable_rl_module_api=False)
+    # config.training(_enable_learner_api=False)
 
     logger.info('[Algo]: {}'.format(algorithm))
 
@@ -228,32 +231,26 @@ if __name__ == "__main__":
         best_result = results.get_best_result()
         logger.info(f"Tuner Best Results {best_result}")
     else:
+        ckp_string = f'{out_dir}/models/{cppu_name}_{algorithm}/'
         logger.info('Building config for Algorithm {}'.format(algorithm))
         algo = config.build()
         logger.info('Algorithm {} has been built'.format(algorithm))
+        # algo.save(checkpoint_dir=ckp_string)
         publish_server_ready(logger, ag_sim, cppu_name)
         count = 1
         # Attempt to restore from checkpoint if possible.
         if restore_checkpoint:
-            ckp_string = f'models/{cppu_name}_{algorithm}_*/'
-            dir_list = sorted(glob.glob(os.path.join(out_dir, ckp_string)))
-            logger.info(f'dir_list={dir_list}')
-            if len(dir_list) > 0:
-                last_checkpoint_path = dir_list[-1]
-                try:
-                    logger.info(f"Restoring from checkpoint path: {last_checkpoint_path}")
-                    algo.restore(last_checkpoint_path)
-                    logger.info('Succesfully restored')
-                    count = int(last_checkpoint_path.split('_')[1]) + 1
-                except Exception as e:
-                    logger.info(f"Unable to restore from checkpoint: {e}")
-            else:
-                logger.info(f"No match found for string {ckp_string}")
-                
+            try:
+                logger.info(f"Restoring from checkpoint path: {ckp_string}")
+                algo.restore(ckp_string)
+                logger.info('Succesfully restored')
+            except Exception as e:
+                logger.info(f"Unable to restore from checkpoint: {e}")
 
         # Serving and training loop.
         logger.info('Entering infinite training loop...')
-
+        # save_result = algo.save(checkpoint_dir=ckp_string)
+        # logger.info(f"Checkpoint saved @ {ckp_string}: {save_result}")
         while True:
             # Calls to train() will block on the configured `input` in the Trainer
             # config above (PolicyServerInput).
@@ -270,3 +267,5 @@ if __name__ == "__main__":
             logger.info(f"[TRAINER_RESULTS]: total_loss: {total_loss}, policy_loss: {policy_loss},"
                         f" policy entropy: {policy_entropy}, CPU use: {cpu_use}%, RAM use: {ram_use}%")
             logger.info(pretty_print(results))
+            save_result = algo.save(checkpoint_dir=ckp_string)
+            logger.info(f"Checkpoint saved @ {ckp_string}: {save_result}")

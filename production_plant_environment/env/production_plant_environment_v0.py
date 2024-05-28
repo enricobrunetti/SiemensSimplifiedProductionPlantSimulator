@@ -81,7 +81,8 @@ class ProductionPlantEnvironment():
         return state
     
     def _next_observation(self):
-        return {'current_agent': self.current_agent, 'time': self.time, 'agents_state': self.agents_state, 'products_state': self.products_state, 'action_mask': self.action_mask, 'agents_busy': self.agents_busy}
+        return {'current_agent': self.current_agent, 'time': self.time, 'agents_state': self.agents_state,
+                'products_state': self.products_state, 'action_mask': self.action_mask, 'agents_busy': self.agents_busy}
 
     def _take_action(self, action):
         action_time = self._get_action_time(self.current_agent, action)
@@ -198,13 +199,16 @@ class ProductionPlantEnvironment():
 
         state, reward, done, _ = self._internal_step(action, True)
         state, reward, done, _ = self._perform_internal_steps(state, done)
+        if np.all(np.array(state['action_mask'][state['current_agent']]) == 0):
+            print("wtf")
         return state, reward, done, info
 
     def _perform_internal_steps(self, state, done = 0):
         start_time = state['time'] - 1
         action_selected_by_algorithm_needed = False
         while not action_selected_by_algorithm_needed:
-            if np.all(np.array(state['action_mask'][state['current_agent']]) == 0) or state['agents_busy'][state['current_agent']][0] == 1:
+            if np.all(np.array(state['action_mask'][state['current_agent']]) == 0) or\
+                    state['agents_busy'][state['current_agent']][0] == 1:
                 # if no actions available -> do nothing
                 action = self.nothing_action
             else:
@@ -233,12 +237,17 @@ class ProductionPlantEnvironment():
             next_agent = self._get_next_agent(agent, action)
             next_skill = [i for i in range(len(products_state[product])) if 1 in products_state[product][i]][0]
             if next_skill in self.agents_skills[next_agent]:
-                return {'production_skill_executed': True, 'transport_duration': self._get_action_time(agent, action), 'production_skill_duration': self._get_action_time(next_agent, next_skill)}
+                return {'production_skill_executed': True, 'transport_duration': self._get_action_time(agent, action),
+                        'production_skill_duration': self._get_action_time(next_agent, next_skill)}
             else:
                 return {'production_skill_executed': False, 'transport_duration': self._get_action_time(agent, action)}
 
     def _get_next_agent(self, agent, action):
-        return self.agents_connections[agent][action - self.n_production_skills]
+        try:
+            next_agent = self.agents_connections[agent][action - self.n_production_skills]
+        except:
+            print("wtf")
+        return next_agent
 
     def _get_action_time(self, agent, action):
         # compute time needed to perform the action (if there is custom one for that agent use it

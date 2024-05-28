@@ -172,8 +172,9 @@ class Agent(AgentSImulator):
         """
         Performs Learning step once handle_path_selection message is received
         """
-        self.reward_barriers['path'] = threading.Barrier(2)
-        self.logger.debug(f'Reward Barriers Created')
+        # No reward barrier needed now?
+        # self.reward_barriers['path'] = threading.Barrier(2)
+        # self.logger.debug(f'Reward Barriers Created')
         eid = self.episode_identifier
         self.logger.info('Learning_step: Requesting action and learning')
         if self.client_server: 
@@ -190,11 +191,13 @@ class Agent(AgentSImulator):
         self.logger.info('Action: {}'.format(action))
 
         # Wait until the reward can be collected
-        self.reward_barriers['path'].wait()
-        reward = self.exchange_dicts['path']['reward']
-        self.logger.debug(f' REWARD[{reward}] ' + 'Barriers Unlocked ...')
+        # No reward needed here for RLlib
+        # self.logger.debug(f' REWARD[{reward}] ' + 'Barriers locked ...')
+        # self.reward_barriers['path'].wait()
+        # reward = self.exchange_dicts['path']['reward']
+        # self.logger.debug(f' REWARD[{reward}] ' + 'Barriers Unlocked ...')
         # self.reward_barriers['path'].pop(mqtt_id)
-        self.logger.debug(f'REWARD[{reward}] ' + 'Barriers Deleted ...')
+        # self.logger.debug(f'REWARD[{reward}] ' + 'Barriers Deleted ...')
         
         agents_information = None
         if not self.client_server and self.algorithm_class == 'Dist_Q':
@@ -278,24 +281,26 @@ class Agent(AgentSImulator):
         In case of Rllib before logging one action the reward for the previous one should be computed.
         If on-policy, log the reward of the previous action (if any)
         '''
+        if not ((len(self.trajectory) > 0 and reward is not None) or (len(self.trajectory) == 0 and reward is None)):
+            print("wtf")
         assert (len(self.trajectory) > 0 and reward is not None) or (len(self.trajectory) == 0 and reward is None)
         if reward is not None:
             last_sample_key = list(self.trajectory.keys())[-1]
             last_sample = self.trajectory[last_sample_key]
             self.client.log_returns(episode_id=last_sample['info']['eid'], reward=reward)
 
-        if len(self.trajectory) > 0:
+        # if len(self.trajectory) > 0:
             # Log the reward corresponding to the last action
-            last_sample_key = list(self.trajectory.keys())[-1]
-            last_sample = self.trajectory[last_sample_key]
+            # last_sample_key = list(self.trajectory.keys())[-1]
+            # last_sample = self.trajectory[last_sample_key]
             # Check if the last product id is again in the cppu
             # TODO modify to handle more products
             # with a single product this check is not needed
-            if True: #last_sample['info']['product_id'] in list(self.get_products(self.cppu_name)):
+            # if True: #last_sample['info']['product_id'] in list(self.get_products(self.cppu_name)):
                 # Get the product info
-                product_info = self.get_product(self.cppu_name, last_sample['info']['product_id'][0])
-                last_reward = self.compute_reward_rllib(product_info['States']['SkillHistory'])
-                self.client.log_returns(episode_id=last_sample['info']['eid'], reward=last_reward)
+                # product_info = self.get_product(self.cppu_name, last_sample['info']['product_id'][0])
+                # last_reward = self.compute_reward_rllib(product_info['States']['SkillHistory'])
+                # self.client.log_returns(episode_id=last_sample['info']['eid'], reward=last_reward)
 
     def handle_variant_selection(self, cppu, skill, mqtt_id):
         """
@@ -419,11 +424,10 @@ class Agent(AgentSImulator):
         reward = transition["reward"]
         self.exchange_dicts['path']['reward'] = reward
         self.logger.debug(f'REWARD[{reward}] Barriers Locked ...')
-        self.reward_barriers['path'].wait()
+        # self.reward_barriers['path'].wait()
 
     def setup_mqtt_clients(self):
         self.logger.debug(f'Setting up MQTT client ...')
-
         for mqtt_client in (self.mqtt_pub_client, self.mqtt_sub_client):
             mqtt_client.on_connect = self.on_connect
             mqtt_client.connect(self.get_mqtt_hostname())
