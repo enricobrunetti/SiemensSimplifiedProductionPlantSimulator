@@ -1,5 +1,6 @@
 {
     "algorithm": "random",
+    "use_action_masks": false,
     "test_model": false,
     "test_model_name": "models/9_units_increased_difficulty_1_product/reward5/True_1_False_500/LPI/LPI_eps-greedy_1000_0.01_0.99_0.0001_0__q_init:0_0_0_DEP",
     "baseline_path": "models/9_units_increased_difficulty_3_product_same_config/random_baseline",
@@ -17,6 +18,7 @@
     "available_actions": [8, 9, 10, 11, 12],
     "action_time": [5, 5, 5, 5, 5, 5, 5, 5, 2, 2, 2, 2, 2, 0],
     "action_energy": [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 0],
+    "illegal_action_penalty": 500,
     "custom_reward": "reward5",
     "alpha": 0.7,
     "beta": 0.3,

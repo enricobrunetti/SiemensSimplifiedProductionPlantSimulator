@@ -1,5 +1,6 @@
 {
     "algorithm": "LPI",
+    "use_action_masks": false,
     "test_model": false,
     "test_model_name": "",
     "baseline_path": "models/9_units/random_baseline",
@@ -17,6 +18,7 @@
     "available_actions": [8, 9, 10, 11, 12],
     "action_time": [5, 5, 5, 5, 5, 5, 5, 5, 2, 2, 2, 2, 2, 0],
     "action_energy": [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 0],
+    "illegal_action_penalty": 500,
     "custom_reward": "reward5",
     "alpha": 0.7,
     "beta": 0.3,

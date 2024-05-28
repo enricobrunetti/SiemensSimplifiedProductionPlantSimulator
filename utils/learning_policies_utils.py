@@ -9,11 +9,11 @@ SEMI_MDP_CONFIG_PATH = "config/semiMDP_reward_config.json"
 
 # given number of agents and algorithm return a list of istances of agents of that specific algorithm
 def initialize_agents(n_agents, algorithm, run_num, n_episodes, reward_type, available_actions, agents_connections):
-    model_units_folder = '9_units_increased_difficulty_5_product_diff_config'#f'{n_agents}_units'
+    model_units_folder = '9_units_increased_difficulty_5_product_same_config_no_action_mask'#f'{n_agents}_units'
     if reward_type == 'reward5':
         with open(SEMI_MDP_CONFIG_PATH) as config_file:
             semiMDP_reward_config = json.load(config_file)
-        reward_type += f"/{semiMDP_reward_config['positive_shaping']}_{semiMDP_reward_config['positive_shaping_equal']}_{semiMDP_reward_config['positive_shaping_constant']}_{semiMDP_reward_config['negative_shaping']}_{semiMDP_reward_config['negative_shaping_constant']}_{semiMDP_reward_config['semiMDP_till_end_of_episode']}"
+        reward_type += f"/{semiMDP_reward_config['positive_shaping']}_{semiMDP_reward_config['positive_shaping_equal']}_{semiMDP_reward_config['positive_shaping_constant']}_{semiMDP_reward_config['negative_shaping']}_{semiMDP_reward_config['negative_shaping_constant']}_{semiMDP_reward_config['semiMDP_till_end_of_episode']}_IAP500"
     if algorithm == "DistQ":
         with open(DIST_Q_CONFIG_PATH) as config_file:
             config = json.load(config_file)

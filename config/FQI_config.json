@@ -1,7 +1,7 @@
 {
     "algorithm": "FQI",
-    "INPUT_DIR": "output/9_units_increased_difficulty_5_products_diff_config_random_test_for_FQI_semiMDP_standard_till_product_end_pos_shaping50/trajectory/POSTPROCESSED.json",
-    "observability_grade": 0,
+    "INPUT_DIR": "output/5_products_same_config_no_action_mask/trajectory/POSTPROCESSEDobs2LightNeighbourState.json",
+    "observability_grade": 2,
     "regressor_params": {"n_estimators": 30,
                         "min_samples_split": 3},
     "max_iterations": 1,

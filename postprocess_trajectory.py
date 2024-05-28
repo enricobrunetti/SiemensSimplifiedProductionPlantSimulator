@@ -1,8 +1,8 @@
 import json
 from utils.trajectories_management import TrajectoryManager
 
-INPUT_DIR = 'output/9_units_increased_difficulty_5_products_diff_config_random_test_for_FQI_semiMDP_standard_till_product_end_pos_shaping50/trajectory/run0'
-OUTPUT_DIR = 'output/9_units_increased_difficulty_5_products_diff_config_random_test_for_FQI_semiMDP_standard_till_product_end_pos_shaping50/trajectory/POSTPROCESSED.json'
+INPUT_DIR = 'output/5_products_same_config_no_action_mask/trajectory/run0'
+OUTPUT_DIR = 'output/5_products_same_config_no_action_mask/trajectory/POSTPROCESSEDobs2LightNeighbourState.json'
 CONFIG_PATH = "config/simulator_config.json"
 
 with open(CONFIG_PATH) as config_file:
@@ -16,7 +16,7 @@ tm.remove_action_masks()
 # manage observability grade in the config
 #tm.extract_agent_state_and_product_skills_for_DISTQ()
 # for LPI mantain max observability, so we can extract k and beta neighbourhood for each step
-tm.set_states_observability()
+tm.set_states_observability(restricted_neighbours_state=True)
 tm.extract_agent_trajectories()
 tm.save_trajectory()
 

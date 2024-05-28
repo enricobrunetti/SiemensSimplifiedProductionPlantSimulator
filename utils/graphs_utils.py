@@ -198,7 +198,7 @@ class FQIPlotter:
     def __init__(self, model_path_runs, n_episodes, test_episodes_for_fqi_iteration):
         self.model_path_runs = model_path_runs
         self.model_path = self.model_path_runs[0].rsplit("/", 1)[0]
-        self.kernel_size = 10#int(n_episodes / 10)
+        self.kernel_size = 2#int(n_episodes / 10)
         self.test_episodes_for_fqi_iteration = test_episodes_for_fqi_iteration
 
         self.training_performances = {}

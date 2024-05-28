@@ -1,8 +1,7 @@
 from production_plant_environment.env.production_plant_environment_v0 import ProductionPlantEnvironment
 from utils.learning_policies_utils import initialize_agents, get_agent_state_and_product_skill_observation_DISTQ_online
-from utils.fqi_utils import get_FQI_state
+from utils.fqi_utils import get_FQI_state, get_FQI_state_reduced_neighbours_info
 from utils.graphs_utils import DistQAndLPIPlotter, FQIPlotter
-from utils.run_environment_utils import get_next_agent_number
 import json
 import numpy as np
 import copy
@@ -49,10 +48,10 @@ for run in range(n_runs):
 
     if algorithm == 'LPI':
         observations_history_LPI = {}
-
+    
     performance = {}
     greedy_fqi_performance = {}
-
+   
     if algorithm != 'random':
         if test_model:
             # if we are testing load existing model
@@ -72,9 +71,9 @@ for run in range(n_runs):
     model_path_runs[run] = model_path
     baseline_path_runs[run] = baseline_path
     baseline_path_runs[run] += f'/run{run}'
-
+    
     env = ProductionPlantEnvironment(config, run, model_path, semiMDP_reward_config)
-
+    
     if test_model:
         n_episodes = test_model_n_episodes
 
@@ -106,12 +105,46 @@ for run in range(n_runs):
 
         state = env.reset()
         old_state = copy.deepcopy(state)
-
+        
         for step in range(num_max_steps):
             if algorithm == 'random':
-                actions = np.array(env.actions)
-                actions = actions[np.array(state['action_mask'][state['current_agent']]) == 1]
-                action = np.random.choice(actions)
+                # TO-DO: remove that after test or put it somewhere else
+                if n_products == 1 and config['random_eps_opt']:
+                    epsilon = config['random_eps_opt_epsilon']
+                    next_skill = [i for i in range(len(state['products_state'][0])) if 1 in state['products_state'][0][i]][0]
+                    if np.random.rand() < epsilon:
+                        actions = np.array(env.actions)
+                        actions = actions[np.array(state['action_mask'][state['current_agent']]) == 1]
+                        action = np.random.choice(actions)
+                    else:
+                        if state['current_agent'] == 0 and next_skill == 1:
+                            action = 9
+                        elif state['current_agent'] == 1 and next_skill == 1:
+                            action = 9
+                        elif state['current_agent'] == 2 and next_skill == 2:
+                            action = 10
+                        elif state['current_agent'] == 5 and next_skill == 2:
+                            action = 10
+                        elif state['current_agent'] == 8 and next_skill == 3:
+                            action = 8
+                        elif state['current_agent'] == 5 and next_skill == 3:
+                            action = 8
+                        elif state['current_agent'] == 2 and next_skill == 3:
+                            action = 11
+                        elif state['current_agent'] == 1 and next_skill == 7:
+                            action = 11
+                        elif state['current_agent'] == 0 and next_skill == 7:
+                            action = 10
+                        elif state['current_agent'] == 5 and next_skill == 3:
+                            action = 8
+                        else:
+                            actions = np.array(env.actions)
+                            actions = actions[np.array(state['action_mask'][state['current_agent']]) == 1]
+                            action = np.random.choice(actions)
+                else:
+                    actions = np.array(env.actions)
+                    actions = actions[np.array(state['action_mask'][state['current_agent']]) == 1]
+                    action = np.random.choice(actions)
             elif algorithm == 'DistQ':
                 agent = learning_agents[state['current_agent']]
                 obs = get_agent_state_and_product_skill_observation_DISTQ_online(state['current_agent'], state)
@@ -124,15 +157,23 @@ for run in range(n_runs):
                 action = agent.select_action(obs, mask)
             elif algorithm == 'FQI':
                 agent = learning_agents[state['current_agent']]
-                obs = get_FQI_state({'agents_state': state['agents_state'].copy(), 'products_state': state['products_state'].copy()}, agent.get_observable_neighbours(), n_products)
+                #obs = get_FQI_state({'agents_state': state['agents_state'].copy(), 'products_state': state['products_state'].copy()}, agent.get_observable_neighbours(), n_products)
+                # used for lighter neighbours info
+                obs = get_FQI_state_reduced_neighbours_info(state['current_agent'], {'agents_state': state['agents_state'].copy(), 'products_state': state['products_state'].copy()}, agent.get_observable_neighbours(), n_products)
                 mask = state['action_mask'][state['current_agent']][n_production_skills:-1]
                 action = agent.select_action(obs, mask)
 
-            state, reward, done, info = env.step(action)
+            state, reward, done, truncation, info = env.step(action)
             old_state = copy.deepcopy(state)
 
             if done:
                 print(f"The episode {episode+1}/{n_episodes} is finished.")
+                if custom_reward == 'reward5':
+                    trajectory_for_semi_MDP = env.get_actual_trajectory()
+                    agents_rewards_for_plot = env.get_agents_rewards_for_semiMDP()
+                break
+            elif truncation:
+                print(f"The episode {episode+1}/{n_episodes} has been truncated.")
                 if custom_reward == 'reward5':
                     trajectory_for_semi_MDP = env.get_actual_trajectory()
                     agents_rewards_for_plot = env.get_agents_rewards_for_semiMDP()
