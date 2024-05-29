@@ -159,6 +159,7 @@ class Communicator:
             self.cppu_ready.append(cppu_name)
 
     def publish_episode_management(self, phase, episode_id,
+                                   last_rewards=None,
                                    produced_product=None,
                                    save_checkpoint=None):
         """Start or ending and episode"""
@@ -170,6 +171,8 @@ class Communicator:
             payload['save_checkpoint'] = save_checkpoint
         list_of_cppus = self.cppu_names
         for cppu_name in list_of_cppus:
+            if phase == 'End':
+                payload['last_reward'] = last_rewards[cppu_name]
             mqtt_topic = '/'.join(['EpisodeManagement', cppu_name, phase])
             with self.mqtt_pub_client_lock:
                 self.mqtt_pub_client.publish(mqtt_topic, json.dumps(payload))

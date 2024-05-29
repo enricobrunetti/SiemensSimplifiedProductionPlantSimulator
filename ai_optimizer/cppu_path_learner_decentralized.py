@@ -517,7 +517,8 @@ class Agent(AgentSImulator):
             threading.Thread(target=self.end_episode,
                               args=[payload['episode_id'],
                                     payload['produced_product'],
-                                    payload['save_checkpoint']]).start()
+                                    payload['save_checkpoint'],
+                                    payload['last_reward']]).start()
         elif (parameters[0] == 'AgentReadyRequest'
               and parameters[1] == self.cppu_name
               and int(payload) == 1):
@@ -642,7 +643,7 @@ class Agent(AgentSImulator):
             self.mqtt_pub_client.publish(mqtt_topic, payload = payload)
             self.logger.debug(f'Message {mqtt_topic} payload: {payload} SENT!')
 
-    def end_episode(self, episode_id, produced_product, save_checkpoint): 
+    def end_episode(self, episode_id, produced_product, save_checkpoint, last_reward):
         """End the episode when receiving the MQTT message EpisodeManagement end"""
         if self.client_server:
             if save_checkpoint:
@@ -659,6 +660,7 @@ class Agent(AgentSImulator):
                     self.logger.error(f'Failed to get/save policy from updated client: {e}')
             
             if self.last_observation is None:
+                assert last_reward == None
                 # Dum transition
                 dummy_observation = self.observation_space.sample()
                 _ = self.client.get_action(episode_id, dummy_observation)
@@ -672,7 +674,7 @@ class Agent(AgentSImulator):
                 last_sample_key = list(self.trajectory.keys())[-1]
                 last_sample = self.trajectory[last_sample_key]
                 assert episode_id == last_sample['info']['eid']
-                last_reward = self.compute_reward_rllib(produced_product['States']['SkillHistory'])
+                # last_reward = self.compute_reward_rllib(produced_product['States']['SkillHistory'])
                 self.client.log_returns(episode_id=episode_id, reward=last_reward)
                 self.logger.info(f'End Episode for #E{episode_id}')
                 self.client.end_episode(episode_id, self.last_observation)

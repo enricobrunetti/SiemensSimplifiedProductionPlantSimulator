@@ -193,11 +193,23 @@ for episode in range(n_episodes):
                             production_kpi = info["production_skill_duration"]
                         previous_rewards[agent] = (previous_rewards[agent][0] + overall_kpi,
                                                    previous_rewards[agent][1] + production_kpi)
+        if done:
+            break
     if checkpoint_frequency is None:
         save_checkpoint = False
     else:
         save_checkpoint = True if (episode + 1) % checkpoint_frequency == 0 or episode == n_episodes - 1 else False
-    communicator.publish_episode_management('End', episode_id, produced_product=None, save_checkpoint=save_checkpoint)
+    last_rewards = {}
+    for agent in cppu_names:
+        if agent in previous_rewards:
+            overall_kpi, production_kpi = previous_rewards[agent]
+            reshaped_reward = - shape_reward(overall_kpi=overall_kpi, production_kpi=production_kpi,
+                                             shaping_value=shaping_value)
+        else:
+            reshaped_reward = None
+        last_rewards[agent] = reshaped_reward
+    communicator.publish_episode_management('End', episode_id, produced_product=None, save_checkpoint=save_checkpoint,
+                                            last_rewards=last_rewards)
     communicator.sync_episode()
     print(f'Finished Episode {episode}!!')
     # semi MDP reward postponed computation (at the end of the episode)
