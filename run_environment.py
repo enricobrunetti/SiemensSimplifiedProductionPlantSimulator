@@ -6,11 +6,11 @@ sys.path.insert(0, 'ai_optimizer')
 import numpy as np
 from production_plant_environment.env.production_plant_environment_v0 import ProductionPlantEnvironment
 from utils.learning_policies_utils import initialize_agents
-from utils.graphs_utils import DistQAndLPIPlotter, RewardVisualizer
+from utils.graphs_utils import RewardVisualizer
 
 
 
-CONFIG_PATH = "config/simulator_config_3units.json"
+CONFIG_PATH = "ai_optimizer/configs/simulator_config_3units.json"
 SEMI_MDP_CONFIG_PATH = "config/semiMDP_reward_config.json"
 SERVER_BASE_PORT = 9900
 MQTT_HOST_URL = 'localhost'
@@ -40,10 +40,6 @@ loop_threshold = config["loop_threshold"]
 checkpoint_frequency = config["checkpoint_frequency"]
 shaping_value = config["shaping_value"]
 agent_connections = config["agents_connections"]
-ports = []
-for agent in range(n_agents):
-    ports.append([i for i, value in enumerate(agent_connections[str(agent)]) if value is not None])
-ports = np.array(ports)
 
 def get_rllib_state(state, old_state, one_hot_state=False):
     # next_skill , previous_agent, threshold_detected
