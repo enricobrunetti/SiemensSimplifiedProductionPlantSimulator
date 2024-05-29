@@ -1,6 +1,6 @@
 
 n_agents=3
-base_port=9900
+base_port=9980
 scp=ai_optimizer/configs/simulator_config_"$n_agents"units.json
 pcp=ai_optimizer/configs/simulator_config_"$n_agents"units.json
 lcp=ai_optimizer/configs/learning_config.json
