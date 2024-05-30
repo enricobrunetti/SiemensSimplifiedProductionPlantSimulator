@@ -14,6 +14,7 @@
     "number_workers": 0,
     "restore_checkpoint": 0,
     "use_baseline": 0,
+    "action_masking": true,
     "action_masking_number" : 2,
     "update_interval": null,
     "framework": "tf",
@@ -64,9 +65,6 @@
     "rllib_tuner_config" : {
       "training_iteration": 50,
       "timesteps_total": 50
-    },
-    "custom_model_config": {
-        "no_masking": false
     }
   }
   

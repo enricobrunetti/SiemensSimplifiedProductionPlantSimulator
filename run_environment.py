@@ -43,7 +43,7 @@ loop_threshold = config["loop_threshold"]
 checkpoint_frequency = config["checkpoint_frequency"]
 shaping_value = config["shaping_value"]
 agent_connections = config["agents_connections"]
-use_masking = not learning_config["custom_model_config"]["no_masking"]
+use_masking = learning_config["action_masking"]
 
 
 def get_rllib_state(state, old_state, one_hot_state=False, use_masking=False):

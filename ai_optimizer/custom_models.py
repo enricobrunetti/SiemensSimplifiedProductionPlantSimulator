@@ -40,19 +40,12 @@ class ActionMaskPolicyModel(TFModelV2):
             name + "_internal",
         )
 
-        # disable action masking --> will likely lead to invalid actions
-        self.no_masking = model_config["custom_model_config"].get("no_masking", False)
-
     def forward(self, input_dict, state, seq_lens):
         # Extract the available actions tensor from the observation.
         action_mask = input_dict["obs"]["action_mask"]
 
         # Compute the unmasked logits.
         logits, _ = self.internal_model({"obs": input_dict["obs"]["observations"]})
-
-        # If action masking is disabled, directly return unmasked logits
-        if self.no_masking:
-            return logits, state
 
         # Convert action_mask into a [0.0 || -inf]-type mask.
         inf_mask = tf.maximum(tf.math.log(action_mask), tf.float32.min)
@@ -153,9 +146,6 @@ class ActionMaskSACQModel(TFModelV2):
         )
 
         # disable action masking --> will likely lead to invalid actions
-        self.no_masking = False
-        if "no_masking" in model_config["custom_model_config"]:
-            self.no_masking = model_config["custom_model_config"]["no_masking"]
 
     def forward(self, input_dict, state, seq_lens):
         # Extract the available actions tensor from the observation.
@@ -163,10 +153,6 @@ class ActionMaskSACQModel(TFModelV2):
 
         # Compute the unmasked logits.
         q_values, _ = self.internal_model({"obs": input_dict["obs"]["observations"]})
-
-        if self.no_masking:
-            return q_values, state
-
         inf_mask = tf.maximum(tf.math.log(action_mask), tf.float32.min)
         masked_q_values = q_values + inf_mask
         return masked_q_values, state
