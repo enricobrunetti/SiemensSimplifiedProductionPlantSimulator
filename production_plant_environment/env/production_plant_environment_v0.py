@@ -199,8 +199,6 @@ class ProductionPlantEnvironment():
 
         state, reward, done, _ = self._internal_step(action, True)
         state, reward, done, _ = self._perform_internal_steps(state, done)
-        if np.all(np.array(state['action_mask'][state['current_agent']]) == 0):
-            print("wtf")
         return state, reward, done, info
 
     def _perform_internal_steps(self, state, done = 0):
@@ -243,10 +241,7 @@ class ProductionPlantEnvironment():
                 return {'production_skill_executed': False, 'transport_duration': self._get_action_time(agent, action)}
 
     def _get_next_agent(self, agent, action):
-        try:
-            next_agent = self.agents_connections[agent][action - self.n_production_skills]
-        except:
-            print("wtf")
+        next_agent = self.agents_connections[agent][action - self.n_production_skills]
         return next_agent
 
     def _get_action_time(self, agent, action):

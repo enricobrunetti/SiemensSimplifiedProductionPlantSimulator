@@ -95,6 +95,8 @@ class AgentSImulator():
         self.shaping_value = self.learning_config['shaping_value']
         self.fact_duration = self.learning_config['fact_duration']
         self.fact_energy = self.learning_config['fact_energy']
+        self.use_masking = self.learning_config['use_masking']
+
         self.observation_space_dict = {key: value for (key, value) in
                                        self.learning_config["observation_space_dict"].items() if value}
         self.action_space = gym.spaces.Discrete(len(self.ports))
@@ -263,21 +265,32 @@ class AgentSImulator():
     def get_observation_space(self):
         """ Return a list with the dimensionality of each component of the observation """
         if self.one_hot_state:
-            return self.get_action_space_ohe()
-        obs_space = []
-        if self.observation_space_dict.get("next_skill", False):
-            obs_space.append(len(self.skill_names))
-        if self.observation_space_dict.get("product_name", False):
-            obs_space.append(len(self.product_names))
-        if self.observation_space_dict.get("cppu_state", False):
-            obs_space.append(2**len(self.product_names))  # one-hot
-        if self.observation_space_dict.get("next_skills", False):
-            obs_space.append(2**len(self.skill_names))  # one-hot
-        if self.observation_space_dict.get("counter", False):
-            obs_space.append(2)  # binary
-        if self.observation_space_dict.get("previous_cppu", False):
-            obs_space.append(len(self.cppu_dictionary))
-        return gym.spaces.MultiDiscrete(obs_space)
+            space = self.get_action_space_ohe()
+        else:
+            obs_space = []
+            if self.observation_space_dict.get("next_skill", False):
+                obs_space.append(len(self.skill_names))
+            if self.observation_space_dict.get("product_name", False):
+                obs_space.append(len(self.product_names))
+            if self.observation_space_dict.get("cppu_state", False):
+                obs_space.append(2**len(self.product_names))  # one-hot
+            if self.observation_space_dict.get("next_skills", False):
+                obs_space.append(2**len(self.skill_names))  # one-hot
+            if self.observation_space_dict.get("counter", False):
+                obs_space.append(2)  # binary
+            if self.observation_space_dict.get("previous_cppu", False):
+                obs_space.append(len(self.cppu_dictionary))
+        space = gym.spaces.MultiDiscrete(obs_space)
+
+        if self.use_masking:
+            space = gym.spaces.Dict(
+                {
+                    "observations": space,
+                    "action_mask": gym.spaces.Box(0, 1, shape=(len(self.ports),))
+                }
+            )
+        self.observation_space = space
+        return space
 
     def get_action_space(self):
         return self.action_space
@@ -589,6 +602,8 @@ class AgentSImulator():
                 observation.append(previous_cppu)
 
         observation = tuple(observation)
+        if self.use_masking:
+            observation = self.get_masking_observation(observation)
         return observation
     
     def get_previous_observation(self, product_info):
@@ -730,3 +745,10 @@ class AgentSImulator():
         kpi_energy = idle_energy_consumption + dynamic_energy_consumption
         kpi = self.fact_duration*kpi_duration + self.fact_energy*kpi_energy
         return kpi
+
+    def get_masking_observation(self, observation):
+        obs = {}
+        action_mask = None
+        obs["observations"] = observation
+        obs["action_mask"] = action_mask
+        return obs

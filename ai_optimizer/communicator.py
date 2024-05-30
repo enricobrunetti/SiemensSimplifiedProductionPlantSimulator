@@ -16,11 +16,6 @@ class Communicator:
         """
         Class handling the communications
         """
-        # self.mqtt_pub_clients = {}
-        # self.mqtt_pub_client_locks = {}
-        # for i in range(n_agents):
-        #     self.mqtt_pub_clients[self.cppu_names[i]] = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
-        #     self.mqtt_pub_client_locks[self.cppu_names[i]] = threading.Lock()
 
         self.actions = {}
         # Setting up barriers for MQTT sync

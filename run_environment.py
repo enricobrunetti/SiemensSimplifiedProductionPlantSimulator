@@ -12,8 +12,9 @@ from utils.graphs_utils import RewardVisualizer
 
 CONFIG_PATH = "ai_optimizer/configs/simulator_config_3units.json"
 SEMI_MDP_CONFIG_PATH = "config/semiMDP_reward_config.json"
-SERVER_BASE_PORT = 9900
+LEARNING_CONFIG_PATH = "ai_optimizer/configs/learning_config.json"
 MQTT_HOST_URL = 'localhost'
+
 with open(CONFIG_PATH) as config_file:
     config = json.load(config_file)
 with open(SEMI_MDP_CONFIG_PATH) as config_file:
@@ -40,8 +41,10 @@ loop_threshold = config["loop_threshold"]
 checkpoint_frequency = config["checkpoint_frequency"]
 shaping_value = config["shaping_value"]
 agent_connections = config["agents_connections"]
+use_masking = not config["custom_model_config"]["no_masking"]
 
-def get_rllib_state(state, old_state, one_hot_state=False):
+
+def get_rllib_state(state, old_state, one_hot_state=False, use_masking=False):
     # next_skill , previous_agent, threshold_detected
     obs_rllib = []
     next_skill = state["products_state"][0,:, 0].tolist().index(1)
@@ -55,8 +58,25 @@ def get_rllib_state(state, old_state, one_hot_state=False):
         previous_agent = previous_agent_ohe
     obs_rllib.extend(next_skill)
     obs_rllib.extend(previous_agent)
-    return np.array(obs_rllib).flatten()
+    obs_rllib = np.array(obs_rllib).flatten()
+    if use_masking:
+        action_mask = get_action_mask(state)
+        obs_rllib = {
+            "observations": obs_rllib,
+            "action_mask": action_mask
+        }
+    return obs_rllib
 
+def get_action_mask(state):
+    # Only works for 3 agents now
+    current_agent = state["current_agent"]
+    if current_agent == 1:
+        action_mask = np.ones(2)
+        if np.random.rand() < 0.5:
+            action_mask[np.random.choice(2)] = 0
+    else:
+        action_mask = np.ones(1)
+    return action_mask
 
 def extract_kpi(skill): # TODO remove since it is done inside the env
     fact_duration = 0
@@ -162,7 +182,7 @@ for episode in range(n_episodes):
         else:
             action_selected_by_algorithm = True
             cppu_name = get_cppu_name(state["current_agent"])
-            obs = get_rllib_state(state, one_hot_state=one_hot_state, old_state=old_state)
+            obs = get_rllib_state(state, one_hot_state=one_hot_state, old_state=old_state, use_masking=use_masking)
             #obs_rllib = []
             if cppu_name in previous_rewards:
                 overall_kpi, production_kpi = previous_rewards[cppu_name]

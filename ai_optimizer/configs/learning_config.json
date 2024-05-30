@@ -14,12 +14,12 @@
     "number_workers": 0,
     "restore_checkpoint": 0,
     "use_baseline": 0,
-    "action_masking": 0,
     "action_masking_number" : 2,
     "update_interval": null,
     "framework": "tf",
     "loop_threshold": 100,
     "shaping_value": 3.0,
+    "use_masking": true,
     "checkpoint_frequency": 300,
     "baseline": "random",
     "fact_duration": 1.0,
@@ -52,7 +52,7 @@
       "type": "MultiAgentPrioritizedReplayBuffer",
       "capacity": 50
       },
-      "policy_model_config ":{
+      "policy_model_config":{
         "fcnet_hiddens": [64,32],
         "fcnet_activation": "tanh"
       },
@@ -64,6 +64,9 @@
     "rllib_tuner_config" : {
       "training_iteration": 50,
       "timesteps_total": 50
+    },
+    "custom_model_config": {
+        "no_masking": false
     }
   }
   

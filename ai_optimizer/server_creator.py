@@ -9,6 +9,7 @@ import os
 import argparse
 import json
 from agent_simulator import AgentSImulator
+from custom_models import ActionMaskPolicyModel, ActionMaskSACQModel
 import paho.mqtt.client as mqtt
 import threading
 
@@ -206,6 +207,8 @@ if __name__ == "__main__":
     # config.training(_enable_learner_api=False)
 
     logger.info('[Algo]: {}'.format(algorithm))
+    rllib_algorithm_config["policy_model_config"]["custom_model"] = ActionMaskPolicyModel
+    rllib_algorithm_config["q_model_config"]["custom_model"] = ActionMaskSACQModel
 
     # Update config with algorithmic specific parameters
     config.update_from_dict({param: value for param, value in rllib_algorithm_config.items()})
