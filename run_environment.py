@@ -19,6 +19,8 @@ with open(CONFIG_PATH) as config_file:
     config = json.load(config_file)
 with open(SEMI_MDP_CONFIG_PATH) as config_file:
     semiMDP_reward_config = json.load(config_file)
+with open(LEARNING_CONFIG_PATH) as config_file:
+    learning_config = json.load(config_file)
 
 test_model = config['test_model']
 test_model_name = config['test_model_name']
@@ -41,7 +43,7 @@ loop_threshold = config["loop_threshold"]
 checkpoint_frequency = config["checkpoint_frequency"]
 shaping_value = config["shaping_value"]
 agent_connections = config["agents_connections"]
-use_masking = not config["custom_model_config"]["no_masking"]
+use_masking = not learning_config["custom_model_config"]["no_masking"]
 
 
 def get_rllib_state(state, old_state, one_hot_state=False, use_masking=False):

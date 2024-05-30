@@ -280,7 +280,7 @@ class AgentSImulator():
                 obs_space.append(2)  # binary
             if self.observation_space_dict.get("previous_cppu", False):
                 obs_space.append(len(self.cppu_dictionary))
-        space = gym.spaces.MultiDiscrete(obs_space)
+            space = gym.spaces.MultiDiscrete(obs_space)
 
         if self.use_masking:
             space = gym.spaces.Dict(
