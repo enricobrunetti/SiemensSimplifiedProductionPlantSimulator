@@ -292,6 +292,13 @@ class AgentSImulator():
         self.observation_space = space
         return space
 
+    def prepare_observation(self, state):
+        if self.use_masking:
+            obs = dict(state)
+        else:
+            obs = np.array(state)
+        return obs
+
     def get_action_space(self):
         return self.action_space
     

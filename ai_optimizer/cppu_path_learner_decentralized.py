@@ -203,12 +203,12 @@ class Agent(AgentSImulator):
         if not self.client_server and self.algorithm_class == 'Dist_Q':
             raise ValueError("Dist_Q not implemented here")
             # extract info from other agents for learning by using the observation AFTER skill execution
-            next_agent_obs = self.get_next_agent_observation(observation[1], port)
-            self.logger.info('Next Agent Observation is {}'.format(next_agent_obs))
-            agents_information = self.client.extract_information_from_neighbours(next_agent_obs, port)
-            samples = {'rewards': reward, 'action':action, 'previous_observation': observation[0], 'info': None}
-            # learn on batch for non-rllib agents
-            self.client.learn_on_batch(samples, agents_information)
+            # next_agent_obs = self.get_next_agent_observation(observation[1], port)
+            # self.logger.info('Next Agent Observation is {}'.format(next_agent_obs))
+            # agents_information = self.client.extract_information_from_neighbours(next_agent_obs, port)
+            # samples = {'rewards': reward, 'action':action, 'previous_observation': observation[0], 'info': None}
+            # # learn on batch for non-rllib agents
+            # self.client.learn_on_batch(samples, agents_information)
 
         self.trajectory[str(len(self.trajectory.keys()))] = {
             'action': action, 
@@ -281,8 +281,6 @@ class Agent(AgentSImulator):
         In case of Rllib before logging one action the reward for the previous one should be computed.
         If on-policy, log the reward of the previous action (if any)
         '''
-        if not ((len(self.trajectory) > 0 and reward is not None) or (len(self.trajectory) == 0 and reward is None)):
-            print("wtf")
         assert (len(self.trajectory) > 0 and reward is not None) or (len(self.trajectory) == 0 and reward is None)
         if reward is not None:
             last_sample_key = list(self.trajectory.keys())[-1]
@@ -333,7 +331,7 @@ class Agent(AgentSImulator):
         
         if not threshold_detected:
             if not self.baseline_mode:
-                observation = state
+                observation = self.prepare_observation(state)
                 #self.return_observation_tuples(product_info, self.client_server, self.algorithm_class)
                 if self.train_mode:
                     # Port publishing meanwhile managing information
@@ -387,6 +385,8 @@ class Agent(AgentSImulator):
         """ 
         Method to check whether the production has been going on too long since the last production skill 
         """
+        if self.use_masking:
+            state = state["observations"]
         return state[-1]
         # self.logger.info(f'Checking Production Threshold for product {product}')
         # skill_history = product_info['States']['SkillHistory']
@@ -486,7 +486,7 @@ class Agent(AgentSImulator):
             self.logger.debug(f'CPPU {self.cppu_name} ' +
                               'MQTT message PathSelection ...')
             payload = json.loads(payload)
-            state = np.array(payload["state"])
+            state = payload["state"]
             reward = payload["reward"]
             threshold_detected = bool(payload["threshold_detected"])
             threading.Thread(target=self.handle_path_selection,

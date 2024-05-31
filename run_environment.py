@@ -174,7 +174,6 @@ for episode in range(n_episodes):
     communicator.sync_episode()
 
     for step in range(num_max_steps):
-
         action_selected_by_algorithm = False
 
         if np.all(np.array(state['action_mask'][state['current_agent']]) == 0) \

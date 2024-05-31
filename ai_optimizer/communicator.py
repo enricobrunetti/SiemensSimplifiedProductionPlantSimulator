@@ -115,7 +115,7 @@ class Communicator:
         mqtt_topic = '/'.join(['PathSelection', cppu])
         with self.mqtt_pub_client_lock:
             self.mqtt_pub_client.publish(mqtt_topic,
-                                         json.dumps({"state": state.tolist(),
+                                         json.dumps({"state": state,
                                                      "reward": prev_reward,
                                                      "threshold_detected": threshold_detected}))
         return f'State {state}'
