@@ -60,12 +60,12 @@ def get_rllib_state(state, old_state, one_hot_state=False, use_masking=False):
         previous_agent = previous_agent_ohe
     obs_rllib.extend(next_skill)
     obs_rllib.extend(previous_agent)
-    obs_rllib = np.array(obs_rllib).flatten()
+    obs_rllib = np.array(obs_rllib).flatten().tolist()
     if use_masking:
         action_mask = get_action_mask(state)
         obs_rllib = {
             "observations": obs_rllib,
-            "action_mask": action_mask
+            "action_mask": action_mask.tolist()
         }
     return obs_rllib
 
