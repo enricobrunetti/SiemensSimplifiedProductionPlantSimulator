@@ -1,7 +1,7 @@
 {
     "algorithm": "FQI",
-    "INPUT_DIR": "output/5_products_same_config_no_action_mask/trajectory/POSTPROCESSEDobs2LightNeighbourState.json",
-    "observability_grade": 2,
+    "INPUT_DIR": "output/20_units/increased_difficulty_3_product_same_config_true_true_25_true_500_false_500_no_action_mask/trajectory/POSTPROCESSEDobs3LightNeighbourState.json",
+    "observability_grade": 3,
     "regressor_params": {"n_estimators": 30,
                         "min_samples_split": 3},
     "max_iterations": 1,

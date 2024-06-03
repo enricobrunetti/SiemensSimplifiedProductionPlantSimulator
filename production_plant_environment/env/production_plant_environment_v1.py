@@ -1,5 +1,4 @@
 from typing import Any
-import gymnasium
 from gymnasium import spaces
 from utils.production_plant_environment_log_utils import OutputGenerator
 import copy
@@ -17,6 +16,8 @@ class ProductionPlantEnvironment():
         self.n_products = self.config['n_products']
         self.n_production_skills = self.config['n_production_skills']
         self.actions = self.config['actions']
+        self.available_actions = self.config['available_actions']
+        self.action_spaces = {i: spaces.Discrete(len(self.available_actions)) for i in range(self.n_agents)}
         self.use_action_masks = self.config['use_action_masks']
         self.n_production_skills = config['n_production_skills']
         self.nothing_action = self.n_production_skills + 5
@@ -57,6 +58,8 @@ class ProductionPlantEnvironment():
         self.time = 0
         self.actual_algorithm_step = 0
         self.trajectory = []
+        self.last_step = {}
+        self.active_agents = True
 
         # for every agent we have a tuple in which the first element is 0 if the 
         # agent is free and 1 if the agent is busy. The second element report on which
@@ -84,6 +87,12 @@ class ProductionPlantEnvironment():
         if not self.use_action_masks:
             state = copy.deepcopy(state)
             state['action_mask'] = self._hide_action_mask(state['action_mask'], self.current_agent)
+
+        self.last_step['observation'] = copy.deepcopy(state)
+        self.last_step['reward'] = None
+        self.last_step['termination'] = False
+        self.last_step['truncation'] = False
+        self.last_step['info'] = {'action_mask': np.array(state['action_mask'][self.current_agent][self.n_production_skills:-1], dtype=np.int8)}
         return state
     
     def _next_observation(self):
@@ -195,6 +204,11 @@ class ProductionPlantEnvironment():
     
     # called only for actions decided by the algorithm
     def step(self, action):
+        if action == None:
+            self.active_agents = False
+            return
+            
+        action = action + self.n_production_skills
         agent = self.current_agent
         product = np.argmax(self.agents_state[agent])
         products_state = copy.deepcopy(self.products_state)
@@ -221,6 +235,13 @@ class ProductionPlantEnvironment():
         else:
             truncation = False
 
+        # Add an action mask compatible with gymnasium to info
+        info['action_mask'] = np.array(state['action_mask'][self.current_agent][self.n_production_skills:-1], dtype=np.int8)
+        self.last_step['observation'] = copy.deepcopy(state)
+        self.last_step['reward'] = reward
+        self.last_step['termination'] = done
+        self.last_step['truncation'] = truncation
+        self.last_step['info'] = info
         return state, reward, done, truncation, info
 
     def _perform_internal_steps(self, state, done = 0):
@@ -479,6 +500,45 @@ class ProductionPlantEnvironment():
             if actual_step['action_selected_by_algorithm']:
                 agents_rewards[actual_step['old_state']['current_agent']] += np.power(self.config['gamma'],  actual_step['old_state']['time']) * actual_step['reward']
         return agents_rewards
+    
+    # Yields the current agent (self.current_agent). Needs to be used in a loop where you step() each iteration.
+    def agent_iter(self, max_iter: int = 2**63):
+        return PPEIterable(self, max_iter)
+    
+    # Close rendering windows if any
+    def close(self):
+        pass
+
+    def action_space(self, agent):
+        return self.action_spaces[agent]
+    
+    def last(self):
+        return self.last_step['observation'], self.last_step['reward'], self.last_step['termination'], self.last_step['truncation'], self.last_step['info']
+
+# Poduction Plant Environment Iterable
+class PPEIterable():
+    def __init__(self, env, max_iter):
+        self.env = env
+        self.max_iter = max_iter
+
+    def __iter__(self):
+        return PPEIterator(self.env, self.max_iter)
+
+# Poduction Plant Environment Iterator
+class PPEIterator():
+    def __init__(self, env, max_iter: int):
+        self.env = env
+        self.iters_til_term = max_iter
+
+    def __next__(self):
+        if not self.env.active_agents or self.iters_til_term <= 0:
+            raise StopIteration
+        self.iters_til_term -= 1
+        return self.env.current_agent
+
+    def __iter__(self):
+        return self
+
 
 
     
