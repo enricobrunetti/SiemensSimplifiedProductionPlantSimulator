@@ -1,8 +1,8 @@
 import json
 from utils.trajectories_management import TrajectoryManager
 
-INPUT_DIR = 'output/20_units/increased_difficulty_3_product_same_config_true_true_25_true_500_false_500_no_action_mask/trajectory/run0'
-OUTPUT_DIR = 'output/20_units/increased_difficulty_3_product_same_config_true_true_25_true_500_false_500_no_action_mask/trajectory/POSTPROCESSEDobs3LightNeighbourState.json'
+INPUT_DIR = 'output/20_units/increased_difficulty_5_product_same_config_true_true_25_true_500_false_500_no_action_mask/trajectory/run0'
+OUTPUT_DIR = 'output/20_units/increased_difficulty_5_product_same_config_true_true_25_true_500_false_500_no_action_mask/trajectory/POSTPROCESSEDobs1LightNeighboursInfo.json'
 CONFIG_PATH = "config/simulator_config.json"
 
 with open(CONFIG_PATH) as config_file:

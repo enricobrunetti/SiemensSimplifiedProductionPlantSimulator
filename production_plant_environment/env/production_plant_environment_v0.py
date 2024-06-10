@@ -7,7 +7,7 @@ import numpy as np
 import random
 
 class ProductionPlantEnvironment():
-    def __init__(self, config, run, model_path, semiMDP_reward_config = None):
+    def __init__(self, config, run, model_path, semiMDP_reward_config = None, parallel = False, episode = None, logs = True):
         self.config = config
         self.semiMDP_reward_config = semiMDP_reward_config
         self.custom_reward = config['custom_reward']
@@ -35,7 +35,9 @@ class ProductionPlantEnvironment():
         self.beta = self.config['beta']
         self.action_mask = {}
         self.output_generator = OutputGenerator(config, run, model_path)
-        self.output_generator.generate_log_file()
+        self.logs = logs
+        if self.logs:
+            self.output_generator.generate_log_file()
 
         # initially mask all actions for all agents
         for i in range(self.n_agents):
@@ -46,12 +48,19 @@ class ProductionPlantEnvironment():
         self.supply_agent = self.config['supply_agent']
 
         self.performance = {}
-        self.episode = -1
+        self.parallel = parallel
+        if self.parallel:
+            self.episode = episode
+        else :
+            self.episode = -1
 
     def reset(self):
-        self.episode += 1
+        if not self.parallel:
+            self.episode += 1
+
         self.performance[self.episode] = {}
-        self.output_generator.start_new_episode_log(self.episode)
+        if self.logs:
+            self.output_generator.start_new_episode_log(self.episode)
 
         self.current_agent = 0
         self.time = 0
@@ -107,13 +116,15 @@ class ProductionPlantEnvironment():
                 self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] = np.maximum(0, self.products_state[np.argmax(self.agents_state[self.current_agent] == 1)] - 1)
                 self.action_mask[self.supply_agent] = self.compute_mask(self.supply_agent, next_product)
                 self.agents_busy[self.supply_agent] = (1, self.time + action_time)
-            self.output_generator.pick_up_new_product_log(self.current_agent, next_product)
+            if self.logs:
+                self.output_generator.pick_up_new_product_log(self.current_agent, next_product)
         elif action < self.n_production_skills:
             actual_product = np.argmax(self.agents_state[self.current_agent] == 1)
             self.products_state[actual_product] = np.maximum(0, self.products_state[actual_product] - 1)
             self.action_mask[self.current_agent] = self.compute_mask(self.current_agent, actual_product)
             self.agents_busy[self.current_agent] = (1, self.time + action_time)
-            self.output_generator.production_skill_log(action, actual_product, self.current_agent)
+            if self.logs:
+                self.output_generator.production_skill_log(action, actual_product, self.current_agent)
         # perform transfer actions
         elif action < self.n_production_skills+4:
             next_agent = self._get_next_agent(self.current_agent, action)
@@ -122,10 +133,12 @@ class ProductionPlantEnvironment():
             self.action_mask[self.current_agent] = np.zeros_like(self.action_mask[self.current_agent])
             self.action_mask[next_agent] = self.compute_mask(next_agent, np.argmax(self.agents_state[next_agent] == 1))
             self.agents_busy[next_agent] = (1, self.time + action_time)
-            self.output_generator.transfer_action_log(self.current_agent, np.argmax(self.agents_state[next_agent] == 1), next_agent, action)
+            if self.logs:
+                self.output_generator.transfer_action_log(self.current_agent, np.argmax(self.agents_state[next_agent] == 1), next_agent, action)
         elif action == self.n_production_skills+4:
             self.agents_busy[self.current_agent] = (1, self.time + action_time)
-            self.output_generator.transfer_action_log(self.current_agent, np.argmax(self.agents_state[self.current_agent] == 1), self.current_agent, action)
+            if self.logs:
+                self.output_generator.transfer_action_log(self.current_agent, np.argmax(self.agents_state[self.current_agent] == 1), self.current_agent, action)
         # all the actions have been masked -> no action available (agent standby)
         else:
             pass
@@ -157,7 +170,7 @@ class ProductionPlantEnvironment():
                     # of the agent that termined the product
                     if np.max(self.agents_state[agent]) == 1 and all(elem == 0 for elem in np.array(self.products_state[np.argmax(self.agents_state[agent])]).flatten()):
                         # TO-DO: find a cleaner way to produce this log
-                        print(f"Product {np.argmax(self.agents_state[agent])} finished.")
+                        #print(f"Product {np.argmax(self.agents_state[agent])} finished.")
                         self.agents_state[agent] = np.zeros_like(self.agents_state[agent])
                         self.action_mask[agent] = self.compute_mask(agent)
 
@@ -165,7 +178,8 @@ class ProductionPlantEnvironment():
                 done = True
                 if self.semiMDP_reward_config and self.custom_reward == 'reward5':
                     self.trajectory = self._compute_semi_MDP_reward(self.trajectory)
-                self.output_generator.end_episode_log(self.episode)
+                if self.logs:
+                    self.output_generator.end_episode_log(self.episode)
                 self.output_generator.generate_outputs(self.trajectory, self.episode)
                 self._compute_performance_end_of_episode()
             else:
@@ -215,7 +229,8 @@ class ProductionPlantEnvironment():
             state['time'] = self.num_max_steps
             if self.semiMDP_reward_config and self.custom_reward == 'reward5':
                 self.trajectory = self._compute_semi_MDP_reward(self.trajectory)
-                self.output_generator.end_episode_log(self.episode)
+                if self.logs:
+                    self.output_generator.end_episode_log(self.episode)
                 self.output_generator.generate_outputs(self.trajectory, self.episode)
                 self._compute_performance_end_of_episode(truncation = True)
         else:
@@ -356,7 +371,8 @@ class ProductionPlantEnvironment():
             self.performance[self.episode][i] = {}
             self.performance[self.episode][i]['mean_reward'] = mean_reward
         
-        self.output_generator.generate_performance_log(self.performance, self.episode)
+        if self.logs:
+            self.output_generator.generate_performance_log(self.performance, self.episode)
     
     def _compute_semi_MDP_reward2(self, trajectory_for_semi_MDP):
         for actual_step in range(len(trajectory_for_semi_MDP) - 1):
