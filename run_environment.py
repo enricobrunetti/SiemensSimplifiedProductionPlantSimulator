@@ -44,7 +44,7 @@ for run in range(n_runs):
     if algorithm != 'random' and algorithm != 'FQI':
         learning_agents, update_values, policy_improvement = initialize_agents(n_agents, algorithm, run, n_episodes, custom_reward, available_actions, config['agents_connections'])
     elif algorithm == 'FQI':
-        learning_agents, test_episodes_for_fqi_iteration = initialize_agents(n_agents, algorithm, run, n_episodes, custom_reward, available_actions, config['agents_connections'])
+        learning_agents, test_episodes_for_fqi_iteration, multiple_exploration_probabilities, exploration_probabilities, episodes_for_each_explor_for_iteration = initialize_agents(n_agents, algorithm, run, n_episodes, custom_reward, available_actions, config['agents_connections'])
 
     if algorithm == 'LPI':
         observations_history_LPI = {}
@@ -77,6 +77,14 @@ for run in range(n_runs):
     if test_model:
         n_episodes = test_model_n_episodes
 
+    if algorithm == 'FQI' and multiple_exploration_probabilities:
+        actual_expl_prob_index = 0
+        expl_prob_counter = 0
+        new_exploration_probability = exploration_probabilities[actual_expl_prob_index]
+        for fqi_agent in learning_agents:
+            fqi_agent.change_exploration_probability(new_exploration_probability)
+        print(f"Exploration probability changed to {new_exploration_probability}")
+
     for episode in range(n_episodes):
         if algorithm == 'DistQ' or algorithm == 'LPI':
             for agent in learning_agents:
@@ -90,13 +98,31 @@ for run in range(n_runs):
             greedy_step = False
             for fqi_agent in learning_agents:
                 fqi_agent.restore_exploration_probability()
-            print("Exploration probability restored")
+            if multiple_exploration_probabilities:
+                actual_expl_prob_index = 0
+                expl_prob_counter = 0
+                new_exploration_probability = exploration_probabilities[actual_expl_prob_index]
+                for fqi_agent in learning_agents:
+                    fqi_agent.change_exploration_probability(new_exploration_probability)
+                print(f"Exploration probability changed to {new_exploration_probability}")
+            else:
+                print("Exploration probability restored")
         
         if algorithm == 'FQI' and not test_model and episode % test_episodes_for_fqi_iteration == (test_episodes_for_fqi_iteration - 1):
             greedy_step = True
             for fqi_agent in learning_agents:
                 fqi_agent.change_exploration_probability(0)
             print("Exploration probability changed to 0")
+
+        if algorithm == 'FQI' and multiple_exploration_probabilities and not test_model and not greedy_step:
+            if expl_prob_counter == episodes_for_each_explor_for_iteration:
+                actual_expl_prob_index += 1
+                expl_prob_counter = 0
+                new_exploration_probability = exploration_probabilities[actual_expl_prob_index]
+                for fqi_agent in learning_agents:
+                    fqi_agent.change_exploration_probability(new_exploration_probability)
+                print(f"Exploration probability changed to {new_exploration_probability}")
+            expl_prob_counter += 1
 
         if algorithm == 'FQI' and not test_model and episode % test_episodes_for_fqi_iteration == 0:
             for fqi_agent in learning_agents:
@@ -117,30 +143,62 @@ for run in range(n_runs):
                         actions = actions[np.array(state['action_mask'][state['current_agent']]) == 1]
                         action = np.random.choice(actions)
                     else:
-                        if state['current_agent'] == 0 and next_skill == 1:
-                            action = 9
-                        elif state['current_agent'] == 1 and next_skill == 1:
-                            action = 9
-                        elif state['current_agent'] == 2 and next_skill == 2:
-                            action = 10
-                        elif state['current_agent'] == 5 and next_skill == 2:
-                            action = 10
-                        elif state['current_agent'] == 8 and next_skill == 3:
-                            action = 8
-                        elif state['current_agent'] == 5 and next_skill == 3:
-                            action = 8
-                        elif state['current_agent'] == 2 and next_skill == 3:
-                            action = 11
-                        elif state['current_agent'] == 1 and next_skill == 7:
-                            action = 11
-                        elif state['current_agent'] == 0 and next_skill == 7:
-                            action = 10
-                        elif state['current_agent'] == 5 and next_skill == 3:
-                            action = 8
-                        else:
-                            actions = np.array(env.actions)
-                            actions = actions[np.array(state['action_mask'][state['current_agent']]) == 1]
-                            action = np.random.choice(actions)
+                        if n_agents == 9:
+                            if state['current_agent'] == 0 and next_skill == 1:
+                                action = 9
+                            elif state['current_agent'] == 1 and next_skill == 1:
+                                action = 9
+                            elif state['current_agent'] == 2 and next_skill == 2:
+                                action = 10
+                            elif state['current_agent'] == 5 and next_skill == 2:
+                                action = 10
+                            elif state['current_agent'] == 8 and next_skill == 3:
+                                action = 8
+                            elif state['current_agent'] == 5 and next_skill == 3:
+                                action = 8
+                            elif state['current_agent'] == 2 and next_skill == 3:
+                                action = 11
+                            elif state['current_agent'] == 1 and next_skill == 7:
+                                action = 11
+                            elif state['current_agent'] == 0 and next_skill == 7:
+                                action = 10
+                            elif state['current_agent'] == 5 and next_skill == 3:
+                                action = 8
+                            else:
+                                actions = np.array(env.actions)
+                                actions = actions[np.array(state['action_mask'][state['current_agent']]) == 1]
+                                action = np.random.choice(actions)
+                        elif n_agents == 20:
+                            if state['current_agent'] == 5 and next_skill == 1:
+                                action = 11
+                            elif state['current_agent'] == 6 and next_skill == 1:
+                                action = 10
+                            elif state['current_agent'] == 1 and next_skill == 2:
+                                action = 12
+                            elif state['current_agent'] == 6 and next_skill == 2:
+                                action = 11
+                            elif state['current_agent'] == 7 and next_skill == 3:
+                                action = 12
+                            elif state['current_agent'] == 12 and next_skill == 3:
+                                action = 11
+                            elif state['current_agent'] == 13 and next_skill == 3:
+                                action = 10
+                            elif state['current_agent'] == 8 and next_skill == 3:
+                                action = 10
+                            elif state['current_agent'] == 3 and next_skill == 4:
+                                action = 11
+                            elif state['current_agent'] == 4 and next_skill == 9:
+                                action = 13
+                            elif state['current_agent'] == 3 and next_skill == 9:
+                                action = 13
+                            elif state['current_agent'] == 2 and next_skill == 9:
+                                action = 13
+                            elif state['current_agent'] == 1 and next_skill == 9:
+                                action = 13
+                            else:
+                                actions = np.array(env.actions)
+                                actions = actions[np.array(state['action_mask'][state['current_agent']]) == 1]
+                                action = np.random.choice(actions)
                 else:
                     actions = np.array(env.actions)
                     actions = actions[np.array(state['action_mask'][state['current_agent']]) == 1]
@@ -157,9 +215,9 @@ for run in range(n_runs):
                 action = agent.select_action(obs, mask)
             elif algorithm == 'FQI':
                 agent = learning_agents[state['current_agent']]
-                #obs = get_FQI_state({'agents_state': state['agents_state'].copy(), 'products_state': state['products_state'].copy()}, agent.get_observable_neighbours(), n_products)
+                obs = get_FQI_state({'agents_state': state['agents_state'].copy(), 'products_state': state['products_state'].copy()}, agent.get_observable_neighbours(), n_products)
                 # used for lighter neighbours info
-                obs = get_FQI_state_reduced_neighbours_info(state['current_agent'], {'agents_state': state['agents_state'].copy(), 'products_state': state['products_state'].copy()}, agent.get_observable_neighbours(), n_products)
+                #obs = get_FQI_state_reduced_neighbours_info(state['current_agent'], {'agents_state': state['agents_state'].copy(), 'products_state': state['products_state'].copy()}, agent.get_observable_neighbours(), n_products)
                 mask = state['action_mask'][state['current_agent']][n_production_skills:-1]
                 action = agent.select_action(obs, mask)
 
@@ -275,8 +333,11 @@ if test_model:
         plotter.plot_performance_graph()
 
 if algorithm == 'FQI' and not test_model:
-    plotter = FQIPlotter(model_path_runs, n_training_episodes, test_episodes_for_fqi_iteration)
-    plotter.plot_reward_graphs()
-    plotter.plot_performance_graph()
-    plotter.plot_single_run_performance_graph()
+    plotter = FQIPlotter(model_path_runs, test_episodes_for_fqi_iteration, multiple_exploration_probabilities, exploration_probabilities, episodes_for_each_explor_for_iteration)
+    if multiple_exploration_probabilities:
+        plotter.plot_performance_graph_multiple_epsilon()
+    else:
+        plotter.plot_reward_graphs()
+        plotter.plot_performance_graph()
+        plotter.plot_single_run_performance_graph()
         

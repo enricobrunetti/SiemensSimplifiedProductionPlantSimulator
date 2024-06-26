@@ -305,7 +305,9 @@ class FQIAgent():
         self.n_training_episodes = n_training_episodes
         self.test_episodes_for_fqi_iteration = config['test_episodes_for_fqi_iteration']
         self.reward_type = reward_type
-        self.model_name = f'models/{model_units_folder}/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.n_training_episodes/self.test_episodes_for_fqi_iteration}_{self.observability_grade}_{self.regressor_params["n_estimators"]}_{self.regressor_params["min_samples_split"]}_{self.max_iterations}_{self.batch_size}_{self.exploration_probability}LightNeighboursInfo'
+        self.model_name = f'models/{model_units_folder}/{self.reward_type}/{self.algorithm}/{self.algorithm}_{self.n_training_episodes/self.test_episodes_for_fqi_iteration}_{self.observability_grade}_{self.regressor_params["n_estimators"]}_{self.regressor_params["min_samples_split"]}_{self.max_iterations}_{self.batch_size}_{self.exploration_probability}'
+        if config['multiple_exploration_probabilities']:
+            self.model_name += '_multipleExplorationProbabilities'
         self.model_name += f'/run{self.run_num}'
 
         _, _, _, self.r, self.s_prime, self.absorbing, self.sa, _ = split_data_single_agent(self.INPUT_DIR, self.agent_num)
